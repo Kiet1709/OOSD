@@ -39,6 +39,8 @@ sealed class Route(val path: String) {
     object CustomerProfile : Route("customer_profile")
     object CustomerAddress : Route("customer_address")
     object CustomerOrderHistory : Route("customer_order_history")
+    object CustomerFavorites : Route("customer_favorites")
+    object CustomerNotifications : Route("customer_notifications")
     object CustomerEditProfile : Route("customer_edit_profile")
     object CustomerFoodDetail : Route("customer_food_detail/{foodId}"){
         const val ARG_FOOD_ID = "foodId"
@@ -52,7 +54,6 @@ sealed class Route(val path: String) {
         val navArgs = listOf(navArgument(ARG_TYPE) { type = NavType.StringType })
     }
 
-    // [FIX QUAN TRỌNG]: Thống nhất dùng orderId cho Tracking
     object CustomerTracking : Route("customer_tracking/{orderId}") {
         const val ARG_ORDER_ID = "orderId"
         fun createRoute(orderId: String) = "customer_tracking/$orderId"

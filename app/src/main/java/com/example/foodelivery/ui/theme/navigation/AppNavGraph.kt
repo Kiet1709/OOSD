@@ -1,6 +1,18 @@
 package com.example.foodelivery.ui.theme.navigation
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -14,7 +26,7 @@ import com.example.foodelivery.presentation.auth.login.LoginScreen
 import com.example.foodelivery.presentation.auth.contract.LoginEffect
 import com.example.foodelivery.presentation.auth.register.RegisterScreen
 import com.example.foodelivery.presentation.auth.register.contract.RegisterEffect
-// --- 2. IMPORT ADMIN (Tên hàm Composable khớp chính xác với file bạn gửi) ---
+// --- 2. IMPORT ADMIN ---
 import com.example.foodelivery.presentation.admin.home.AdminDashboardScreen
 import com.example.foodelivery.presentation.admin.food.list.AdminFoodListScreen
 import com.example.foodelivery.presentation.admin.food.detail.AdminFoodDetailScreen
@@ -41,7 +53,31 @@ fun AppNavGraph(
 ) {
     NavHost(
         navController = navController,
-        startDestination = startDestination
+        startDestination = startDestination,
+        enterTransition = {
+            slideInHorizontally(
+                initialOffsetX = { 300 },
+                animationSpec = tween(300)
+            ) + fadeIn(animationSpec = tween(300))
+        },
+        exitTransition = {
+            slideOutHorizontally(
+                targetOffsetX = { -300 },
+                animationSpec = tween(300)
+            ) + fadeOut(animationSpec = tween(300))
+        },
+        popEnterTransition = {
+            slideInHorizontally(
+                initialOffsetX = { -300 },
+                animationSpec = tween(300)
+            ) + fadeIn(animationSpec = tween(300))
+        },
+        popExitTransition = {
+            slideOutHorizontally(
+                targetOffsetX = { 300 },
+                animationSpec = tween(300)
+            ) + fadeOut(animationSpec = tween(300))
+        }
     ) {
         authGraph(navController)
         adminGraph(navController)
@@ -57,7 +93,6 @@ fun NavGraphBuilder.authGraph(navController: NavHostController) {
     navigation(startDestination = Route.Login.path, route = Route.Graph.AUTH) {
 
         composable(Route.Login.path) {
-            // [FIX]: Khớp với LoginScreen.kt bạn gửi (dùng onNavigate)
             LoginScreen(
                 onNavigation = { effect ->
                     when(effect) {
@@ -70,7 +105,6 @@ fun NavGraphBuilder.authGraph(navController: NavHostController) {
                         is LoginEffect.Navigation.ToAdminDashboard -> {
                             navController.navigate(Route.Graph.ADMIN) { popUpTo(Route.Graph.AUTH) { inclusive = true } }
                         }
-                        // [FIX]: Xử lý đầy đủ các nhánh (Exhaustive)
                         is LoginEffect.Navigation.ToRegister -> {
                             navController.navigate(Route.Register.path)
                         }
@@ -86,11 +120,9 @@ fun NavGraphBuilder.authGraph(navController: NavHostController) {
             onNavigation = { effect ->
                 when(effect) {
                     is RegisterEffect.Navigation.ToLogin -> {
-                        // Đăng ký xong hoặc bấm Back -> Về Login
                         navController.popBackStack()
                     }
                     is RegisterEffect.Navigation.ToHome -> {
-                        // Nếu muốn đăng ký xong vào luôn App
                         navController.navigate(Route.Graph.CUSTOMER) {
                             popUpTo(Route.Graph.AUTH) { inclusive = true }
                         }
@@ -103,17 +135,15 @@ fun NavGraphBuilder.authGraph(navController: NavHostController) {
 }
 
 // =================================================================
-// 2. ADMIN GRAPH (Khớp 100% với các file bạn upload)
+// 2. ADMIN GRAPH
 // =================================================================
 fun NavGraphBuilder.adminGraph(navController: NavHostController) {
     navigation(startDestination = Route.AdminDashboard.path, route = Route.Graph.ADMIN) {
 
-        // 1. Dashboard: Nhận navController trực tiếp (Theo file AdminDashboardScreen.kt)
         composable(Route.AdminDashboard.path) {
             AdminDashboardScreen(navController = navController)
         }
 
-        // 2. Food List: Nhận 3 callback (Theo file AdminFoodListScreen.kt)
         composable(Route.AdminFoodList.path) {
             AdminFoodListScreen(
                 onNavigateBack = { navController.popBackStack() },
@@ -122,50 +152,39 @@ fun NavGraphBuilder.adminGraph(navController: NavHostController) {
             )
         }
 
-        // 3. Category List: Nhận 3 callback (Theo file AdminCategoryListScreen.kt)
         composable(Route.AdminCategoryList.path) {
             AdminCategoryListScreen(
                 onNavigateBack = { navController.popBackStack() },
-                // Giả định bạn đã thêm Route.AddCategory và Route.EditCategory vào file Route.kt
-                // Nếu chưa, hãy dùng string tạm: "admin_add_category"
                 onNavigateToAdd = { navController.navigate("admin_add_category") },
                 onNavigateToEdit = { catId -> navController.navigate("admin_edit_category/$catId") }
             )
         }
 
-        // 4. Order List: Nhận navController trực tiếp (Theo file AdminOrderListScreen.kt)
         composable(Route.AdminOrderList.path) {
             AdminOrderListScreen(navController = navController)
         }
 
-        // 5. Food Detail (Add Mode) - (Theo file AdminFoodDetailScreen.kt)
         composable(Route.AddFood.path) {
             AdminFoodDetailScreen(
                 onNavigateBack = { navController.popBackStack() }
-                // Không truyền foodId -> ViewModel tự hiểu là Add
             )
         }
 
-        // 6. Food Detail (Edit Mode)
         composable(
             route = Route.EditFood.path,
             arguments = Route.EditFood.navArgs
         ) {
             AdminFoodDetailScreen(
                 onNavigateBack = { navController.popBackStack() }
-                // ViewModel tự lấy ID từ SavedStateHandle
             )
         }
 
-        // 7. Category Detail (Add Mode) - (Theo file AddEditCategoryScreen.kt)
-        // Lưu ý: Đảm bảo Route.kt có route này hoặc dùng chuỗi string bên dưới
         composable("admin_add_category") {
             AddEditCategoryScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
 
-        // 8. Category Detail (Edit Mode)
         composable(
             route = "admin_edit_category/{categoryId}",
             arguments = listOf(navArgument("categoryId") { type = NavType.StringType })
@@ -188,7 +207,7 @@ fun NavGraphBuilder.customerGraph(navController: NavHostController) {
             CustomerHomeScreen(navController = navController)
         }
 
-        // 2. FOOD LIST SCREEN (Xem tất cả / Danh mục)
+        // 2. FOOD LIST SCREEN
         composable(
             route = Route.CustomerFoodList.path,
             arguments = Route.CustomerFoodList.navArgs
@@ -197,7 +216,7 @@ fun NavGraphBuilder.customerGraph(navController: NavHostController) {
             FoodListScreen(navController = navController, type = type)
         }
 
-        // 3. FOOD DETAIL SCREEN (Chi tiết món)
+        // 3. FOOD DETAIL SCREEN
         composable(
             route = Route.CustomerFoodDetail.path,
             arguments = Route.CustomerFoodDetail.navArgs
@@ -225,15 +244,32 @@ fun NavGraphBuilder.customerGraph(navController: NavHostController) {
             CustomerTrackingScreen(navController = navController, orderId = orderId)
         }
 
-        // Các màn hình Placeholder khác
+        // --- PLACEHOLDER SCREENS (FIX CRASH) ---
+        composable(Route.CustomerFavorites.path) {
+             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(text = "Màn hình Yêu thích (Đang phát triển)")
+            }
+        }
+        composable(Route.CustomerNotifications.path) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(text = "Màn hình Thông báo (Đang phát triển)")
+            }
+        }
+        
         composable(Route.CustomerAddress.path) {
-            androidx.compose.material3.Text("Màn hình Địa chỉ (Đang phát triển)")
+             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(text = "Màn hình Địa chỉ (Đang phát triển)")
+            }
         }
         composable(Route.CustomerOrderHistory.path) {
-            androidx.compose.material3.Text("Màn hình Lịch sử đơn hàng (Đang phát triển)")
+             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(text = "Màn hình Lịch sử đơn hàng (Đang phát triển)")
+            }
         }
         composable(Route.CustomerEditProfile.path) {
-            androidx.compose.material3.Text("Màn hình Chỉnh sửa hồ sơ (Đang phát triển)")
+             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(text = "Màn hình Chỉnh sửa hồ sơ (Đang phát triển)")
+            }
         }
     }
 }

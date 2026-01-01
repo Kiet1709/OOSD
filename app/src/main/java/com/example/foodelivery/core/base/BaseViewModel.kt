@@ -11,9 +11,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
-abstract class BaseViewModel<S : ViewState, I : ViewIntent, E : ViewSideEffect>(
-    initialState: S
-) : ViewModel() {
+abstract class BaseViewModel<S : ViewState, I : ViewIntent, E : ViewSideEffect>(initialState: S) : ViewModel() {
 
     // 1. STATE MANAGEMENT
     private val _uiState = MutableStateFlow(initialState)

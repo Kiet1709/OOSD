@@ -33,14 +33,28 @@ class FoodDetailViewModel @Inject constructor(
     private fun loadFoodDetail(id: String) {
         viewModelScope.launch {
             setState { copy(isLoading = true) }
+            // [FIX]: Thêm delay nhỏ hoặc try-catch nếu cần
             when(val result = foodRepository.getFoodDetail(id)) {
                 is Resource.Success -> {
-                    val data = result.data ?: return@launch
-                    val uiFood = FoodUiModel(data.id, data.name, data.imageUrl, data.price, 4.8, "20 min")
-                    setState { copy(isLoading = false, food = uiFood, totalPrice = uiFood.price * quantity) }
+                    val data = result.data
+                    if (data != null) {
+                        // Giả lập rating và time vì API chưa trả về
+                        val uiFood = FoodUiModel(data.id, data.name, data.imageUrl, data.price, 4.8, "20 min")
+                        setState { copy(isLoading = false, food = uiFood, totalPrice = uiFood.price * quantity) }
+                    } else {
+                         // Trường hợp Success nhưng data null
+                         setState { copy(isLoading = false) }
+                         setEffect { FoodDetailEffect.ShowToast("Không tìm thấy dữ liệu món ăn") }
+                    }
                 }
-                is Resource.Error -> setEffect { FoodDetailEffect.ShowToast(result.message ?: "Lỗi") }
-                else -> {}
+                is Resource.Error -> {
+                    // [FIX]: Quan trọng: Phải tắt loading khi gặp lỗi
+                    setState { copy(isLoading = false) }
+                    setEffect { FoodDetailEffect.ShowToast(result.message ?: "Lỗi tải thông tin món ăn") }
+                }
+                is Resource.Loading -> {
+                     setState { copy(isLoading = true) }
+                }
             }
         }
     }
