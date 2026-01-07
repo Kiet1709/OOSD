@@ -1,7 +1,9 @@
-package com.example.foodelivery.di
+package com.example.foodelivery.core.di
 
+import com.example.foodelivery.data.local.AppDatabase
 import com.example.foodelivery.data.repository.CategoryRepositoryImpl
 import com.example.foodelivery.domain.repository.ICategoryRepository
+import com.google.firebase.firestore.FirebaseFirestore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -14,7 +16,10 @@ object CategoryModule {
 
     @Provides
     @Singleton
-    fun provideCategoryRepository(): ICategoryRepository {
-        return CategoryRepositoryImpl()
+    fun provideCategoryRepository(
+        db: AppDatabase,
+        firestore: FirebaseFirestore
+    ): ICategoryRepository {
+        return CategoryRepositoryImpl(db, firestore)
     }
 }

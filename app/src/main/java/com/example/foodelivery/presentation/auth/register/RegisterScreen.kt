@@ -16,36 +16,45 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.*
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.foodelivery.presentation.auth.register.contract.RegisterEffect
 import com.example.foodelivery.presentation.auth.register.contract.RegisterIntent
-import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun RegisterScreen(
     onNavigation: (RegisterEffect.Navigation) -> Unit,
-    viewModel: RegisterViewModel = hiltViewModel()
+    viewModel: RegisterViewModel = hiltViewModel(),
+    preSelectedRole: String = "CUSTOMER" // Nhận tham số này từ Navigation
 ) {
-    // [FIX]: Dùng uiState thay vì state (theo BaseViewModel Senior)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val scrollState = rememberScrollState()
+
+    // Init Role khi vào màn hình
+    LaunchedEffect(preSelectedRole) {
+        viewModel.processIntent(RegisterIntent.SelectRole(preSelectedRole))
+    }
 
     LaunchedEffect(true) {
-        viewModel.effect.collectLatest { effect ->
+        viewModel.effect.collect { effect ->
             when (effect) {
-                is RegisterEffect.ShowToast -> {
-                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
-                }
-                is RegisterEffect.Navigation -> {
-                    onNavigation(effect)
-                }
+                is RegisterEffect.ShowToast -> Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
+                is RegisterEffect.Navigation -> onNavigation(effect)
             }
         }
+    }
+
+    // Tiêu đề dựa trên role
+    val titleText = when(state.role) {
+        "DRIVER" -> "Đăng ký Tài xế"
+        "STORE" -> "Đăng ký Cửa hàng"
+        else -> "Đăng ký Khách hàng"
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -53,123 +62,113 @@ fun RegisterScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(24.dp)
-                .verticalScroll(scrollState),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Spacer(modifier = Modifier.height(32.dp))
-
             Text(
-                text = "Tạo tài khoản",
+                text = titleText,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
-            Text(
-                text = "Đăng ký để bắt đầu đặt món ngay",
-                fontSize = 14.sp,
-                color = Color.Gray,
-                modifier = Modifier.padding(top = 8.dp, bottom = 32.dp)
-            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Input Fields
-            FoodDeliveryTextField(
+            // Nếu role đã được chọn trước (Driver/Store), ẩn phần chọn Role đi để tập trung.
+            // Nếu là Customer thì có thể để lại (hoặc ẩn luôn cho gọn theo yêu cầu)
+            // Theo yêu cầu: "chức năng đăng kí của 2 actor ngoài khách hàng nằm trong chỗ đăng nhập của chúng luôn"
+            // Tức là khi vào đây là đã biết role rồi -> Ẩn chọn Role.
+            
+            /* 
+            // Ẩn phần này đi
+            Text("Bạn muốn đăng ký làm:", style = MaterialTheme.typography.labelMedium)
+            Row(...) { ... }
+            */
+
+            OutlinedTextField(
                 value = state.name,
                 onValueChange = { viewModel.processIntent(RegisterIntent.NameChanged(it)) },
-                label = "Họ và tên",
-                errorMessage = state.nameError,
-                keyboardType = KeyboardType.Text,
-                imeAction = ImeAction.Next
+                label = { Text(if (state.role == "STORE") "Tên Cửa hàng" else "Họ và tên") },
+                isError = state.nameError != null,
+                modifier = Modifier.fillMaxWidth()
             )
-            FoodDeliveryTextField(
-                value = state.email,
-                onValueChange = { viewModel.processIntent(RegisterIntent.EmailChanged(it)) },
-                label = "Email",
-                errorMessage = state.emailError,
-                keyboardType = KeyboardType.Email,
-                imeAction = ImeAction.Next
-            )
-            FoodDeliveryTextField(
+            
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
                 value = state.phone,
                 onValueChange = { viewModel.processIntent(RegisterIntent.PhoneChanged(it)) },
-                label = "Số điện thoại",
-                errorMessage = state.phoneError,
-                keyboardType = KeyboardType.Phone,
-                imeAction = ImeAction.Next
+                label = { Text("Số điện thoại") },
+                isError = state.phoneError != null,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                modifier = Modifier.fillMaxWidth()
             )
-            FoodDeliveryPasswordField(
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = state.email,
+                onValueChange = { viewModel.processIntent(RegisterIntent.EmailChanged(it)) },
+                label = { Text("Email") },
+                isError = state.emailError != null,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
                 value = state.pass,
                 onValueChange = { viewModel.processIntent(RegisterIntent.PasswordChanged(it)) },
-                label = "Mật khẩu",
-                errorMessage = state.passError,
-                isVisible = state.isPasswordVisible,
-                onToggleVisibility = { viewModel.processIntent(RegisterIntent.TogglePasswordVisibility) },
-                imeAction = ImeAction.Next
+                label = { Text("Mật khẩu") },
+                isError = state.passError != null,
+                modifier = Modifier.fillMaxWidth(),
+                visualTransformation = if (state.isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { viewModel.processIntent(RegisterIntent.TogglePasswordVisibility) }) {
+                        Icon(if (state.isPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null)
+                    }
+                }
             )
-            FoodDeliveryPasswordField(
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
                 value = state.confirmPass,
                 onValueChange = { viewModel.processIntent(RegisterIntent.ConfirmPasswordChanged(it)) },
-                label = "Xác nhận mật khẩu",
-                errorMessage = state.confirmPassError,
-                isVisible = state.isConfirmPasswordVisible,
-                onToggleVisibility = { viewModel.processIntent(RegisterIntent.ToggleConfirmPasswordVisibility) },
-                imeAction = ImeAction.Done
+                label = { Text("Xác nhận mật khẩu") },
+                isError = state.confirmPassError != null,
+                modifier = Modifier.fillMaxWidth(),
+                visualTransformation = if (state.isConfirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { viewModel.processIntent(RegisterIntent.ToggleConfirmPasswordVisibility) }) {
+                        Icon(if (state.isConfirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null)
+                    }
+                }
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Button
             Button(
                 onClick = { viewModel.processIntent(RegisterIntent.SubmitRegister) },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
-                enabled = !state.isLoading,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                enabled = !state.isLoading
             ) {
-                if (state.isLoading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                else Text("ĐĂNG KÝ", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                if (state.isLoading) CircularProgressIndicator(color = Color.White) else Text("ĐĂNG KÝ", fontWeight = FontWeight.Bold)
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            // Footer
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Đã có tài khoản?", color = Color.Gray)
                 Text(
-                    text = " Đăng nhập",
+                    text = " Đăng nhập ngay",
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier
-                        .clickable { viewModel.processIntent(RegisterIntent.ClickLogin) }
-                        .padding(8.dp)
+                    modifier = Modifier.clickable { viewModel.processIntent(RegisterIntent.ClickLogin) }
                 )
             }
-            Spacer(modifier = Modifier.height(24.dp))
         }
-    }
-}
-
-// Giữ nguyên các hàm FoodDeliveryTextField và FoodDeliveryPasswordField của bạn
-// ...
-@Composable
-fun FoodDeliveryTextField(value: String, onValueChange: (String) -> Unit, label: String, errorMessage: String?, keyboardType: KeyboardType, imeAction: ImeAction) {
-    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
-        OutlinedTextField(
-            value = value, onValueChange = onValueChange, label = { Text(label) }, modifier = Modifier.fillMaxWidth(),
-            isError = errorMessage != null, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction), shape = MaterialTheme.shapes.medium
-        )
-        if (errorMessage != null) Text(text = errorMessage, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 8.dp, top = 4.dp))
-    }
-}
-
-@Composable
-fun FoodDeliveryPasswordField(value: String, onValueChange: (String) -> Unit, label: String, errorMessage: String?, isVisible: Boolean, onToggleVisibility: () -> Unit, imeAction: ImeAction) {
-    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
-        OutlinedTextField(
-            value = value, onValueChange = onValueChange, label = { Text(label) }, modifier = Modifier.fillMaxWidth(),
-            isError = errorMessage != null, singleLine = true,
-            visualTransformation = if (isVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = { IconButton(onClick = onToggleVisibility) { Icon(if (isVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, contentDescription = null) } },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = imeAction), shape = MaterialTheme.shapes.medium
-        )
-        if (errorMessage != null) Text(text = errorMessage, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 8.dp, top = 4.dp))
     }
 }

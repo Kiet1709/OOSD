@@ -20,39 +20,38 @@ class LoginViewModel @Inject constructor(
     private val checkUserRoleUseCase: CheckUserRoleUseCase
 ) : ViewModel() {
 
-    // 1. STATE MANAGEMENT
     private val _state = MutableStateFlow(LoginState())
     val state = _state.asStateFlow()
 
-    // 2. SIDE EFFECTS (Navigation, Toast)
     private val _effect = Channel<LoginEffect>()
     val effect = _effect.receiveAsFlow()
 
-    // 3. INTENT PROCESSING (Nhận hành động từ UI)
     fun processIntent(intent: LoginIntent) {
         when (intent) {
-            is LoginIntent.EmailChanged -> {
-                _state.update { it.copy(email = intent.email, emailError = null) }
-            }
-            is LoginIntent.PasswordChanged -> {
-                _state.update { it.copy(pass = intent.pass, passwordError = null) }
-            }
-            LoginIntent.TogglePasswordVisibility -> {
-                _state.update { it.copy(isPasswordVisible = !it.isPasswordVisible) }
-            }
+            is LoginIntent.EmailChanged -> _state.update { it.copy(email = intent.email, emailError = null) }
+            is LoginIntent.PasswordChanged -> _state.update { it.copy(pass = intent.pass, passwordError = null) }
+            LoginIntent.TogglePasswordVisibility -> _state.update { it.copy(isPasswordVisible = !it.isPasswordVisible) }
             LoginIntent.SubmitLogin -> login()
-            LoginIntent.ClickRegister -> sendEffect(LoginEffect.Navigation.ToRegister)
+            
+            LoginIntent.ClickRegister -> {
+                val role = state.value.selectedRole
+                // [FIX]: Gửi role kèm theo qua route
+                sendEffect(LoginEffect.Navigation.ToRegister(preSelectedRole = role))
+            }
             LoginIntent.ClickForgotPassword -> sendEffect(LoginEffect.Navigation.ToForgotPassword)
-            LoginIntent.ClickSkipLogin -> sendEffect(LoginEffect.Navigation.ToCustomerHome)
+            
+            is LoginIntent.SwitchLoginMode -> switchRole(intent.role)
         }
     }
+    
+    fun switchRole(role: String) {
+        _state.update { it.copy(selectedRole = role) }
+    }
 
-    // 4. LOGIC NGHIỆP VỤ
     private fun login() {
         val email = state.value.email
         val pass = state.value.pass
 
-        // Validate cơ bản
         if (email.isBlank()) {
             _state.update { it.copy(emailError = "Email không được để trống") }
             return
@@ -65,37 +64,53 @@ class LoginViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
 
-            // Gọi UseCase Login
             val result = loginUseCase(email, pass)
 
             _state.update { it.copy(isLoading = false) }
 
             when (result) {
                 is Resource.Success -> {
-                    // Login thành công -> Check Role để điều hướng
-                    val role = checkUserRoleUseCase() // Lấy role từ UseCase
-                    navigateByRole(role)
+                    val user = result.data
+                    val dbRole = user?.role ?: "CUSTOMER"
+                    val currentMode = state.value.selectedRole
+
+                    if (validateRole(dbRole, currentMode)) {
+                        sendEffect(LoginEffect.ShowToast("Xin chào ${user?.name}, đăng nhập thành công!"))
+                        navigateByRole(dbRole)
+                    } else {
+                        sendEffect(LoginEffect.ShowToast("Lỗi: Tài khoản là $dbRole, không thể đăng nhập ở chế độ $currentMode"))
+                    }
                 }
                 is Resource.Error -> {
                     val errorMsg = result.message ?: "Đăng nhập thất bại"
                     sendEffect(LoginEffect.ShowToast(errorMsg))
                 }
-                is Resource.Loading -> { /* Đã handle loading state */ }
+                else -> {}
             }
         }
     }
 
+    private fun validateRole(dbRole: String, currentMode: String): Boolean {
+        val db = dbRole.uppercase()
+        val mode = currentMode.uppercase()
+
+        if (db == "ADMIN") return true
+        if (mode == "CUSTOMER" && db == "CUSTOMER") return true
+        if (mode == "DRIVER" && (db == "DRIVER" || db == "SHIPPER")) return true
+        if (mode == "STORE" && db == "STORE") return true
+
+        return false
+    }
+
     private fun navigateByRole(role: String) {
-        when (role) {
-            "ADMIN" -> sendEffect(LoginEffect.Navigation.ToAdminDashboard)
-            "DRIVER" -> sendEffect(LoginEffect.Navigation.ToDriverDashboard)
-            else -> sendEffect(LoginEffect.Navigation.ToCustomerHome) // CUSTOMER
+        when (role.uppercase()) {
+            "ADMIN", "STORE" -> sendEffect(LoginEffect.Navigation.ToAdminDashboard)
+            "DRIVER", "SHIPPER" -> sendEffect(LoginEffect.Navigation.ToDriverDashboard)
+            else -> sendEffect(LoginEffect.Navigation.ToCustomerHome)
         }
     }
 
     private fun sendEffect(effect: LoginEffect) {
-        viewModelScope.launch {
-            _effect.send(effect)
-        }
+        viewModelScope.launch { _effect.send(effect) }
     }
 }

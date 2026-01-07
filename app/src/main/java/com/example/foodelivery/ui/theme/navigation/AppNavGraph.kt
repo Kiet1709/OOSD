@@ -1,7 +1,5 @@
 package com.example.foodelivery.ui.theme.navigation
 
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -21,28 +19,24 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
 
-// --- 1. IMPORT AUTH ---
+// IMPORTS
 import com.example.foodelivery.presentation.auth.login.LoginScreen
 import com.example.foodelivery.presentation.auth.contract.LoginEffect
 import com.example.foodelivery.presentation.auth.register.RegisterScreen
 import com.example.foodelivery.presentation.auth.register.contract.RegisterEffect
-// --- 2. IMPORT ADMIN ---
 import com.example.foodelivery.presentation.admin.home.AdminDashboardScreen
 import com.example.foodelivery.presentation.admin.food.list.AdminFoodListScreen
 import com.example.foodelivery.presentation.admin.food.detail.AdminFoodDetailScreen
 import com.example.foodelivery.presentation.admin.order.list.AdminOrderListScreen
 import com.example.foodelivery.presentation.admin.category.list.AdminCategoryListScreen
 import com.example.foodelivery.presentation.admin.category.add_edit.AddEditCategoryScreen
-
-
-// --- 3. IMPORT CUSTOMER ---
+import com.example.foodelivery.presentation.admin.store_info.AdminStoreInfoScreen
 import com.example.foodelivery.presentation.customer.home.CustomerHomeScreen
 import com.example.foodelivery.presentation.customer.cart.CustomerCartScreen
 import com.example.foodelivery.presentation.customer.food.detail.FoodDetailScreen
 import com.example.foodelivery.presentation.customer.profile.CustomerProfileScreen
 import com.example.foodelivery.presentation.customer.tracking.CustomerTrackingScreen
 import com.example.foodelivery.presentation.customer.food.list.FoodListScreen
-// --- 4. IMPORT DRIVER ---
 import com.example.foodelivery.presentation.driver.dashboard.DriverDashboardScreen
 import com.example.foodelivery.presentation.driver.delivery.DriverDeliveryScreen
 
@@ -86,9 +80,7 @@ fun AppNavGraph(
     }
 }
 
-// =================================================================
 // 1. AUTH GRAPH
-// =================================================================
 fun NavGraphBuilder.authGraph(navController: NavHostController) {
     navigation(startDestination = Route.Login.path, route = Route.Graph.AUTH) {
 
@@ -106,7 +98,11 @@ fun NavGraphBuilder.authGraph(navController: NavHostController) {
                             navController.navigate(Route.Graph.ADMIN) { popUpTo(Route.Graph.AUTH) { inclusive = true } }
                         }
                         is LoginEffect.Navigation.ToRegister -> {
-                            navController.navigate(Route.Register.path)
+                            // [FIX]: Sử dụng createRoute để điền tham số role vào URL
+                            // Route.Register.path hiện tại là "register/{role}"
+                            // Cần thay thế "{role}" bằng giá trị thực tế.
+                            val route = Route.Register.createRoute(effect.preSelectedRole)
+                            navController.navigate(route)
                         }
                         is LoginEffect.Navigation.ToForgotPassword -> {
                             navController.navigate(Route.ForgotPassword.path)
@@ -116,32 +112,51 @@ fun NavGraphBuilder.authGraph(navController: NavHostController) {
             )
         }
 
-        composable(Route.Register.path) {RegisterScreen(
-            onNavigation = { effect ->
-                when(effect) {
-                    is RegisterEffect.Navigation.ToLogin -> {
-                        navController.popBackStack()
-                    }
-                    is RegisterEffect.Navigation.ToHome -> {
-                        navController.navigate(Route.Graph.CUSTOMER) {
-                            popUpTo(Route.Graph.AUTH) { inclusive = true }
+        composable(
+            route = Route.Register.path, // path = "register/{role}"
+            arguments = Route.Register.navArgs
+        ) { backStackEntry ->
+            // [FIX]: Không cần lấy từ previousBackStackEntry nữa vì đã truyền qua argument
+            // ViewModel sẽ tự lấy từ SavedStateHandle (đã làm ở RegisterViewModel)
+            // Hoặc có thể truyền vào UI nếu muốn (nhưng RegisterScreen đã xóa preSelectedRole để ViewModel tự lo rồi, hoặc chưa?)
+            // Kiểm tra RegisterScreen ở lượt 54:
+            // fun RegisterScreen(..., viewModel: RegisterViewModel = hiltViewModel(), preSelectedRole: String = "CUSTOMER")
+            // ViewModel đã lấy từ SavedStateHandle ở lượt 56.
+            // Vậy ta cứ truyền argument vào cho chắc ăn nếu UI cần.
+            
+            val roleArg = backStackEntry.arguments?.getString(Route.Register.ARG_ROLE) ?: "CUSTOMER"
+            
+            RegisterScreen(
+                onNavigation = { effect ->
+                    when(effect) {
+                        is RegisterEffect.Navigation.ToLogin -> {
+                            navController.popBackStack()
+                        }
+                        is RegisterEffect.Navigation.ToHome -> {
+                            navController.navigate(Route.Graph.CUSTOMER) {
+                                popUpTo(Route.Graph.AUTH) { inclusive = true }
+                            }
                         }
                     }
-                }
-            }
-        ) }
+                },
+                // Truyền role lấy từ URL vào UI (để UI init effect SelectRole nếu cần)
+                preSelectedRole = roleArg
+            )
+        }
         composable(Route.ForgotPassword.path) { /* ForgotPasswordScreen */ }
     }
 }
 
-// =================================================================
 // 2. ADMIN GRAPH
-// =================================================================
 fun NavGraphBuilder.adminGraph(navController: NavHostController) {
     navigation(startDestination = Route.AdminDashboard.path, route = Route.Graph.ADMIN) {
 
         composable(Route.AdminDashboard.path) {
             AdminDashboardScreen(navController = navController)
+        }
+
+        composable(Route.AdminStoreInfo.path) {
+            AdminStoreInfoScreen(onNavigateBack = { navController.popBackStack() })
         }
 
         composable(Route.AdminFoodList.path) {
@@ -196,18 +211,14 @@ fun NavGraphBuilder.adminGraph(navController: NavHostController) {
     }
 }
 
-// =================================================================
 // 3. CUSTOMER GRAPH
-// =================================================================
 fun NavGraphBuilder.customerGraph(navController: NavHostController) {
     navigation(startDestination = Route.CustomerHome.path, route = Route.Graph.CUSTOMER) {
 
-        // 1. HOME SCREEN
         composable(Route.CustomerHome.path) {
             CustomerHomeScreen(navController = navController)
         }
 
-        // 2. FOOD LIST SCREEN
         composable(
             route = Route.CustomerFoodList.path,
             arguments = Route.CustomerFoodList.navArgs
@@ -216,7 +227,6 @@ fun NavGraphBuilder.customerGraph(navController: NavHostController) {
             FoodListScreen(navController = navController, type = type)
         }
 
-        // 3. FOOD DETAIL SCREEN
         composable(
             route = Route.CustomerFoodDetail.path,
             arguments = Route.CustomerFoodDetail.navArgs
@@ -225,17 +235,14 @@ fun NavGraphBuilder.customerGraph(navController: NavHostController) {
             FoodDetailScreen(navController = navController, foodId = foodId)
         }
 
-        // 4. CART SCREEN
         composable(Route.CustomerCart.path) {
             CustomerCartScreen(navController = navController)
         }
 
-        // 5. PROFILE SCREEN
         composable(Route.CustomerProfile.path) {
             CustomerProfileScreen(navController = navController)
         }
 
-        // 6. TRACKING SCREEN
         composable(
             route = Route.CustomerTracking.path,
             arguments = Route.CustomerTracking.navArgs
@@ -244,7 +251,6 @@ fun NavGraphBuilder.customerGraph(navController: NavHostController) {
             CustomerTrackingScreen(navController = navController, orderId = orderId)
         }
 
-        // --- PLACEHOLDER SCREENS (FIX CRASH) ---
         composable(Route.CustomerFavorites.path) {
              Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(text = "Màn hình Yêu thích (Đang phát triển)")
@@ -274,9 +280,7 @@ fun NavGraphBuilder.customerGraph(navController: NavHostController) {
     }
 }
 
-// =================================================================
 // 4. DRIVER GRAPH
-// =================================================================
 fun NavGraphBuilder.driverGraph(navController: NavHostController) {
     navigation(startDestination = Route.DriverDashboard.path, route = Route.Graph.DRIVER) {
         composable(Route.DriverDashboard.path) { DriverDashboardScreen(navController) }

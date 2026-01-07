@@ -8,10 +8,6 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-
-
-
-
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
@@ -41,4 +37,10 @@ abstract class RepositoryModule {
     abstract fun bindUserRepository(
         userRepositoryImpl: UserRepositoryImpl
     ): IUserRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindStoreRepository(
+        impl: StoreRepositoryImpl
+    ): IStoreRepository
 }

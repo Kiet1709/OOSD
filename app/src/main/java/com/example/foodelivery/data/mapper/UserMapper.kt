@@ -11,10 +11,10 @@ fun UserEntity.toDomain(): User {
         name = this.name ?: "",
         email = this.email ?: "",
         phoneNumber = this.phoneNumber ?: "",
-        role = this.role ?: "user",
+        role = this.role ?: "customer", // [QUAN TRỌNG] Lấy role từ DB, mặc định customer
 
         avatarUrl = this.avatarUrl ?: "",
-        address = null // Hoặc this.address nếu Entity có trường này
+        address = null
     )
 }
 
@@ -26,7 +26,7 @@ fun UserDto.toEntity(): UserEntity {
         email = this.email ?: "",
         phoneNumber = this.phoneNumber,
         avatarUrl = this.avatarUrl,
-        role = this.role ?: "customer"
+        role = this.role ?: "customer" // [QUAN TRỌNG] Map role từ API xuống DB
     )
 }
 
@@ -38,6 +38,6 @@ fun User.toEntity(): UserEntity {
         email = this.email,
         phoneNumber = this.phoneNumber,
         avatarUrl = this.avatarUrl,
-        role = this.role
+        role = this.role // [QUAN TRỌNG] Lưu role từ App vào DB
     )
 }

@@ -1,7 +1,7 @@
 package com.example.foodelivery.data.repository
 
 import com.example.foodelivery.core.common.Resource
-import com.example.foodelivery.data.local.FoodDatabase
+import com.example.foodelivery.data.local.AppDatabase
 import com.example.foodelivery.data.mapper.*
 import com.example.foodelivery.data.remote.dto.OrderDto
 import com.example.foodelivery.domain.model.Order
@@ -16,7 +16,7 @@ import javax.inject.Inject
 
 class OrderRepositoryImpl @Inject constructor(
     private val firestore: FirebaseFirestore,
-    private val db: FoodDatabase
+    private val db: AppDatabase
 ) : IOrderRepository {
 
     override suspend fun placeOrder(order: Order): Resource<String> {
@@ -41,9 +41,7 @@ class OrderRepositoryImpl @Inject constructor(
         awaitClose { l.remove() }
     }
 
-    // --- FIX LỖI TẠI ĐÂY ---
     override fun getAllOrders(): Flow<Resource<List<Order>>> = callbackFlow {
-        // Lấy tất cả đơn hàng, sắp xếp mới nhất lên đầu
         val q = firestore.collection("orders")
             .orderBy("timestamp", Query.Direction.DESCENDING)
 
@@ -57,7 +55,6 @@ class OrderRepositoryImpl @Inject constructor(
         }
         awaitClose { l.remove() }
     }
-    // -----------------------
 
     override suspend fun updateOrderStatus(orderId: String, status: String, driverId: String?): Resource<Boolean> {
         return try {

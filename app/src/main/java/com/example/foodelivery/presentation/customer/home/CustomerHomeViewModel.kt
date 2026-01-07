@@ -2,9 +2,10 @@ package com.example.foodelivery.presentation.customer.home
 
 import androidx.lifecycle.viewModelScope
 import com.example.foodelivery.core.base.BaseViewModel
-import com.example.foodelivery.core.common.MockData
 import com.example.foodelivery.core.common.Resource
+import com.example.foodelivery.domain.model.Category
 import com.example.foodelivery.domain.model.Food
+import com.example.foodelivery.domain.repository.ICategoryRepository
 import com.example.foodelivery.domain.repository.IFoodRepository
 import com.example.foodelivery.domain.repository.IUserRepository
 import com.example.foodelivery.presentation.customer.home.contract.*
@@ -17,7 +18,8 @@ import javax.inject.Inject
 @HiltViewModel
 class CustomerHomeViewModel @Inject constructor(
     private val userRepository: IUserRepository,
-    private val foodRepository: IFoodRepository
+    private val foodRepository: IFoodRepository,
+    private val categoryRepository: ICategoryRepository
 ) : BaseViewModel<CustomerHomeState, CustomerHomeIntent, CustomerHomeEffect>(CustomerHomeState()) {
 
     init {
@@ -29,7 +31,6 @@ class CustomerHomeViewModel @Inject constructor(
             CustomerHomeIntent.LoadHomeData -> loadData()
             CustomerHomeIntent.Refresh -> loadData()
             
-            // Nhóm các Intent điều hướng lại cho gọn
             is CustomerHomeIntent.ClickFood -> setEffect { CustomerHomeEffect.NavigateToFoodDetail(intent.foodId) }
             is CustomerHomeIntent.ClickCategory -> setEffect { CustomerHomeEffect.NavigateToCategory(intent.categoryId) }
             CustomerHomeIntent.ClickCart -> setEffect { CustomerHomeEffect.NavigateToCart }
@@ -54,16 +55,16 @@ class CustomerHomeViewModel @Inject constructor(
         viewModelScope.launch {
             setState { copy(isLoading = true) }
 
-            // SRP: ViewModel chỉ điều phối dữ liệu, không chứa logic mapping phức tạp
             combine(
                 userRepository.getUser(),
-                foodRepository.getMenu()
-            ) { user, foodResult ->
+                foodRepository.getMenu(),
+                categoryRepository.getCategories()
+            ) { user, foodResult, categoryResult ->
                 
-                // Xử lý dữ liệu món ăn tách biệt
                 val foods = processFoodResult(foodResult)
+                val categories = processCategoryResult(categoryResult)
 
-                Triple(user, foods, MockData.categories)
+                Triple(user, foods, categories)
             }.collect { (user, foods, categories) ->
                 setState {
                     copy(
@@ -79,7 +80,6 @@ class CustomerHomeViewModel @Inject constructor(
         }
     }
 
-    // Helper function: Tách logic xử lý kết quả API ra khỏi luồng chính
     private fun processFoodResult(result: Resource<List<Food>>): List<FoodUiModel> {
         return when(result) {
             is Resource.Success -> {
@@ -93,7 +93,19 @@ class CustomerHomeViewModel @Inject constructor(
         }
     }
 
-    // Extension function: Chuyển đổi Domain Model -> UI Model
+    private fun processCategoryResult(result: Resource<List<Category>>): List<CategoryUiModel> {
+        return when(result) {
+            is Resource.Success -> {
+                result.data?.map { CategoryUiModel(it.id, it.name, it.imageUrl) } ?: emptyList()
+            }
+            is Resource.Error -> {
+                setEffect { CustomerHomeEffect.ShowToast(result.message ?: "Lỗi tải danh mục") }
+                emptyList()
+            }
+            else -> emptyList()
+        }
+    }
+
     private fun Food.toUiModel(): FoodUiModel {
         return FoodUiModel(
             id = this.id,
@@ -101,7 +113,7 @@ class CustomerHomeViewModel @Inject constructor(
             imageUrl = this.imageUrl,
             price = this.price,
             rating = this.rating,
-            time = "20 min" // Có thể tính toán time thật ở đây nếu cần
+            time = "20 min"
         )
     }
 }

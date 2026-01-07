@@ -40,25 +40,22 @@ fun AdminDashboardScreen(
             when(effect) {
                 is AdminDashboardEffect.ShowToast -> Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
 
-                // Logout -> Về màn Login, xóa hết stack
                 is AdminDashboardEffect.NavigateToLogin -> {
                     navController.navigate(Route.Login.path) {
                         popUpTo(0) { inclusive = true }
                     }
                 }
 
-                // Feature Navigation (Khớp với Route của bạn)
                 is AdminDashboardEffect.NavigateToManageOrders -> navController.navigate(Route.AdminOrderList.path)
                 is AdminDashboardEffect.NavigateToFoodList -> navController.navigate(Route.AdminFoodList.path)
-                is AdminDashboardEffect.NavigateToCategoryList -> navController.navigate(Route.AdminCategoryList.path) // Đã sửa từ AddFood thành CategoryList
+                is AdminDashboardEffect.NavigateToProfile -> navController.navigate(Route.AdminStoreInfo.path) // Đã sửa NavigateToProfile thành StoreInfo
 
-                is AdminDashboardEffect.NavigateToProfile -> { /* TODO: Nav to Profile */ }
-                else -> {} // Handle các effect khác nếu cần
+                else -> {}
             }
         }
     }
 
-    // 2. MENU ITEMS (Đã mapping đúng Intent)
+    // 2. MENU ITEMS
     val menuItems = listOf(
         MenuItemUiModel("Đơn Hàng", Icons.Outlined.ReceiptLong, Color(0xFFFF9800)) {
             viewModel.setEvent(AdminDashboardIntent.ClickManageOrders)
@@ -66,9 +63,10 @@ fun AdminDashboardScreen(
         MenuItemUiModel("Thực Đơn", Icons.Outlined.RestaurantMenu, Color(0xFFE91E63)) {
             viewModel.setEvent(AdminDashboardIntent.ClickManageFood)
         },
-        MenuItemUiModel("Danh Mục", Icons.Outlined.Category, Color(0xFF673AB7)) {
-            viewModel.setEvent(AdminDashboardIntent.ClickManageCategory)
+        MenuItemUiModel("Thông Tin Quán", Icons.Outlined.Store, Color(0xFF673AB7)) { // Thêm mục Thông tin quán
+            viewModel.setEvent(AdminDashboardIntent.ClickProfile)
         },
+        
         MenuItemUiModel("Tài Xế", Icons.Outlined.TwoWheeler, Color(0xFF009688)) {
             viewModel.setEvent(AdminDashboardIntent.ClickManageDrivers)
         },
@@ -107,7 +105,7 @@ fun AdminDashboardScreen(
                 onLogoutClick = { viewModel.setEvent(AdminDashboardIntent.ClickLogout) }
             )
 
-            // Stats Cards (Hiển thị dữ liệu thật)
+            // Stats Cards
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -121,7 +119,7 @@ fun AdminDashboardScreen(
                 )
                 StatCard(
                     title = "Đơn cần làm",
-                    value = "${state.pendingOrders}", // Số đơn chờ xử lý
+                    value = "${state.pendingOrders}",
                     icon = Icons.Default.ShoppingBag,
                     color = Color(0xFFE91E63),
                     modifier = Modifier.weight(1f)

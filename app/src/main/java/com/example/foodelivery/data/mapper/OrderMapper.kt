@@ -23,5 +23,5 @@ fun OrderEntity.toDomain() = Order(
     id = id, userId = userId, driverId = driverId,
     status = OrderStatus.fromString(status), totalPrice = totalPrice,
     shippingAddress = shippingAddress, timestamp = timestamp,
-    items = emptyList()
+    items = emptyList() // Local DB lưu items ở bảng riêng nếu cần, hoặc join query
 )

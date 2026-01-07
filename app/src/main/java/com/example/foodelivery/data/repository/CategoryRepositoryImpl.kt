@@ -1,52 +1,136 @@
 package com.example.foodelivery.data.repository
 
 import com.example.foodelivery.core.common.Resource
+import com.example.foodelivery.data.local.AppDatabase
+import com.example.foodelivery.data.mapper.*
+import com.example.foodelivery.data.remote.dto.CategoryDto
 import com.example.foodelivery.domain.model.Category
 import com.example.foodelivery.domain.repository.ICategoryRepository
-import kotlinx.coroutines.delay
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
-class CategoryRepositoryImpl @Inject constructor() : ICategoryRepository {
+class CategoryRepositoryImpl @Inject constructor(
+    private val db: AppDatabase,
+    private val firestore: FirebaseFirestore
+) : ICategoryRepository {
 
-    // Mock Data
-    private val mockList = mutableListOf(
-        Category("1", "Đồ ăn nhanh", "https://via.placeholder.com/150"),
-        Category("2", "Đồ uống", "https://via.placeholder.com/150"),
-        Category("3", "Tráng miệng", "https://via.placeholder.com/150")
-    )
+    private val dao = db.categoryDao()
 
-    override fun getCategories(): Flow<Resource<List<Category>>> = flow {
-        emit(Resource.Loading())
-        delay(800)
-        emit(Resource.Success(mockList.toList()))
+    // Flag để đảm bảo chỉ check seed data 1 lần mỗi khi mở app
+    private var hasCheckedSeedData = false
+
+    override fun getCategories(): Flow<Resource<List<Category>>> = callbackFlow {
+        // 1. Emit Local
+        val localJob = launch {
+            dao.getAllCategories().collect { entities ->
+                val list = entities.map { it.toDomainModel() }
+                trySend(Resource.Success(list))
+            }
+        }
+
+        // 2. Sync Firestore
+        val listener = firestore.collection("categories")
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    trySend(Resource.Error(e.message ?: "Lỗi tải danh mục"))
+                    return@addSnapshotListener
+                }
+                
+                if (snapshot != null) {
+                    // [AUTO-SEED FIX]: Kiểm tra thiếu danh mục nào thì bù danh mục đó
+                    // Không phụ thuộc vào việc list có rỗng hay không
+                    if (!hasCheckedSeedData) {
+                        hasCheckedSeedData = true
+                        val currentNames = snapshot.documents.mapNotNull { it.getString("name") }
+                        launch { seedMissingCategories(currentNames) }
+                    }
+
+                    val remoteCategories = snapshot.documents.mapNotNull { doc ->
+                        try {
+                            doc.toObject(CategoryDto::class.java)?.copy(id = doc.id)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            null
+                        }
+                    }
+
+                    launch {
+                        dao.replaceCategories(remoteCategories.map { it.toEntity() })
+                    }
+                }
+            }
+
+        awaitClose {
+            localJob.cancel()
+            listener.remove()
+        }
+    }
+
+    // Hàm bổ sung danh mục còn thiếu
+    private suspend fun seedMissingCategories(existingNames: List<String>) {
+        val defaults = listOf(
+            Category(id = "", name = "Món chính", imageUrl = "https://cdn-icons-png.flaticon.com/512/2934/2934108.png"),
+            Category(id = "", name = "Đồ ăn nhanh", imageUrl = "https://cdn-icons-png.flaticon.com/512/737/737967.png"),
+            Category(id = "", name = "Đồ uống", imageUrl = "https://cdn-icons-png.flaticon.com/512/2738/2738730.png"),
+            Category(id = "", name = "Tráng miệng", imageUrl = "https://cdn-icons-png.flaticon.com/512/992/992717.png"),
+            Category(id = "", name = "Salad", imageUrl = "https://cdn-icons-png.flaticon.com/512/2515/2515127.png")
+        )
+
+        defaults.forEach { category ->
+            // Chỉ thêm nếu tên chưa tồn tại
+            if (category.name !in existingNames) {
+                try {
+                    addCategory(category)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
     }
 
     override suspend fun getCategoryById(id: String): Resource<Category> {
-        delay(500)
-        val item = mockList.find { it.id == id }
-        return if (item != null) Resource.Success(item) else Resource.Error("Không tìm thấy")
+        return try {
+             val snap = firestore.collection("categories").document(id).get().await()
+             val dto = snap.toObject(CategoryDto::class.java)
+             if (dto != null) {
+                 val finalDto = dto.copy(id = snap.id)
+                 Resource.Success(finalDto.toEntity().toDomainModel())
+             } else {
+                 Resource.Error("Không tìm thấy danh mục")
+             }
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Lỗi tải chi tiết danh mục")
+        }
     }
 
     override suspend fun addCategory(category: Category): Resource<Boolean> {
-        delay(1000)
-        mockList.add(category.copy(id = (mockList.size + 1).toString()))
-        return Resource.Success(true)
+        return try {
+            val ref = if (category.id.isEmpty()) firestore.collection("categories").document() 
+                      else firestore.collection("categories").document(category.id)
+            
+            val dto = category.toDto().copy(id = ref.id)
+            ref.set(dto).await()
+            Resource.Success(true)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Lỗi thêm danh mục")
+        }
     }
 
     override suspend fun updateCategory(category: Category): Resource<Boolean> {
-        delay(1000)
-        val index = mockList.indexOfFirst { it.id == category.id }
-        return if (index != -1) {
-            mockList[index] = category
-            Resource.Success(true)
-        } else Resource.Error("Lỗi cập nhật")
+        return addCategory(category)
     }
 
     override suspend fun deleteCategory(id: String): Resource<Boolean> {
-        delay(800)
-        val removed = mockList.removeIf { it.id == id }
-        return if (removed) Resource.Success(true) else Resource.Error("Xóa thất bại")
+        return try {
+            firestore.collection("categories").document(id).delete().await()
+            Resource.Success(true)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Lỗi xóa danh mục")
+        }
     }
 }

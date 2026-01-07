@@ -16,7 +16,14 @@ sealed class Route(val path: String) {
 
     // AUTH
     object Login : Route("login")
-    object Register : Route("register")
+    
+    // [FIX]: Thêm tham số role vào Route Register
+    object Register : Route("register/{role}") {
+        const val ARG_ROLE = "role"
+        fun createRoute(role: String) = "register/$role"
+        val navArgs = listOf(navArgument(ARG_ROLE) { type = NavType.StringType })
+    }
+    
     object ForgotPassword : Route("forgot_password")
 
     // ADMIN
@@ -25,6 +32,7 @@ sealed class Route(val path: String) {
     object AddFood : Route("admin_add_food")
     object AdminOrderList : Route("admin_order_list")
     object AdminCategoryList : Route("admin_category_list")
+    object AdminStoreInfo : Route("admin_store_info")
 
     // Edit Food
     object EditFood : Route("admin_edit_food/{foodId}") {

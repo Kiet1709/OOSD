@@ -1,17 +1,17 @@
 package com.example.foodelivery.domain.model
 
 data class User(
-    val id: String = "",          // [FIX]: Thêm = ""
-    val name: String = "",        // [FIX]: Thêm = ""
-    val email: String = "",       // [FIX]: Thêm = ""
+    val id: String = "",
+    val name: String = "",
+    val email: String = "",
     val phoneNumber: String = "",
     val avatarUrl: String = "",
     val address: String? = null,
-    val role: String = "customer" // [FIX]: Thêm mặc định
+    val role: String = "customer" // [QUAN TRỌNG] Đã có trường này
 ) {
-    // Constructor rỗng (Bắt buộc phải có để Firestore chạy được)
+    // Constructor cho Firestore (nếu cần)
     constructor() : this("", "", "", "", "", null, "customer")
 
-    fun isDriver() = role == "driver"
-    fun isAdmin() = role == "admin"
+    fun isDriver() = role.equals("driver", ignoreCase = true)
+    fun isAdmin() = role.equals("admin", ignoreCase = true) || role.equals("store", ignoreCase = true)
 }

@@ -14,7 +14,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -55,10 +54,16 @@ fun CustomerHomeScreen(
                     navController.navigate(Route.Login.path) {
                         popUpTo(0) { inclusive = true } // Logout xóa stack
                     }
+                
+                is CustomerHomeEffect.NavigateToCategory ->
+                     Toast.makeText(context, "Category: ${effect.categoryId}", Toast.LENGTH_SHORT).show()
+
+                // [FIX]: Xử lý NavigateToSettings để tránh lỗi Exhaustive
+                CustomerHomeEffect.NavigateToSettings ->
+                    Toast.makeText(context, "Màn hình Settings đang phát triển", Toast.LENGTH_SHORT).show()
 
                 is CustomerHomeEffect.ShowToast ->
                     Toast.makeText(context, effect.msg, Toast.LENGTH_SHORT).show()
-                else -> {}
             }
         }
     }
@@ -73,16 +78,16 @@ fun CustomerHomeScreen(
                 modifier = Modifier.background(Color.White),
 
                 // 1. Click Giỏ hàng
-                onCartClick = { viewModel.setEvent(CustomerHomeIntent.ClickCart) },
+                onCartClick = { viewModel.sendIntent(CustomerHomeIntent.ClickCart) },
 
                 // 2. Click Profile (trong Menu)
-                onProfileClick = { viewModel.setEvent(CustomerHomeIntent.ClickProfile) },
+                onProfileClick = { viewModel.sendIntent(CustomerHomeIntent.ClickProfile) },
 
                 // 3. Click Settings (trong Menu)
-                onSettingsClick = { viewModel.setEvent(CustomerHomeIntent.ClickSettings) },
+                onSettingsClick = { viewModel.sendIntent(CustomerHomeIntent.ClickSettings) },
 
                 // 4. Click Logout (trong Menu)
-                onLogoutClick = { viewModel.setEvent(CustomerHomeIntent.ClickLogout) }
+                onLogoutClick = { viewModel.sendIntent(CustomerHomeIntent.ClickLogout) }
             )
         }
     )
@@ -103,7 +108,7 @@ fun CustomerHomeScreen(
                     HomeSearchBar(
                         text = searchText,
                         onTextChange = { newText -> searchText = newText },
-                        onSearchClicked = { viewModel.setEvent(CustomerHomeIntent.ClickSearch) }
+                        onSearchClicked = { viewModel.sendIntent(CustomerHomeIntent.ClickSearch) }
                     )
                 }
 
@@ -111,7 +116,9 @@ fun CustomerHomeScreen(
                 item {
                     CategorySection(
                         categories = state.categories,
-                        onClick = { viewModel.setEvent(CustomerHomeIntent.ClickCategory(it)) }
+                        onClick = { categoryId -> 
+                             viewModel.sendIntent(CustomerHomeIntent.ClickCategory(categoryId)) 
+                        }
                     )
                 }
 
@@ -121,7 +128,9 @@ fun CustomerHomeScreen(
                     HomeFoodSection(
                         title = "Món Ngon Nổi Bật",
                         foods = state.popularFoods,
-                        onFoodClick = { viewModel.setEvent(CustomerHomeIntent.ClickFood(it)) }
+                        onFoodClick = { foodId -> 
+                            viewModel.sendIntent(CustomerHomeIntent.ClickFood(foodId)) 
+                        }
 
                     )
                 }
@@ -132,7 +141,9 @@ fun CustomerHomeScreen(
                     HomeFoodSection(
                         title = "Gợi Ý Cho Bạn",
                         foods = state.recommendedFoods,
-                        onFoodClick = { viewModel.setEvent(CustomerHomeIntent.ClickFood(it)) }
+                        onFoodClick = { foodId -> 
+                            viewModel.sendIntent(CustomerHomeIntent.ClickFood(foodId)) 
+                        }
                     )
                 }
             }

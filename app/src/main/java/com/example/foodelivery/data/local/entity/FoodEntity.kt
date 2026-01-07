@@ -1,5 +1,7 @@
 package com.example.foodelivery.data.local.entity
-import androidx.room.Entity; import androidx.room.PrimaryKey
+
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 
 @Entity(tableName = "foods")
 data class FoodEntity(
