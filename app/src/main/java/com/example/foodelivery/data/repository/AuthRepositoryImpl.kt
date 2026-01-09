@@ -42,7 +42,23 @@ class AuthRepositoryImpl @Inject constructor(
         auth.signOut()
         db.userDao().clearUser(); db.cartDao().clearCart(); db.orderDao().clearOrders()
     }
-    override suspend fun getCurrentUser(): User? = db.userDao().getUser().first()?.toDomain()
+//    override suspend fun getCurrentUser(): User? = db.userDao().getUser().first()?.toDomain()
+override suspend fun getCurrentUser(): User? {
+    return try {
+        // ✅ Lấy từ Firebase Auth + Firestore thay vì local DB
+        val uid = auth.currentUser?.uid ?: return null
+        val snap = firestore.collection("users").document(uid).get().await()
+        val dto = snap.toObject(UserDto::class.java) ?: return null
+
+        android.util.Log.e("DEBUG_AUTH", "Role từ Firestore: '${dto.role}'")
+
+        dto.toEntity().toDomain()
+    } catch (e: Exception) {
+        android.util.Log.e("DEBUG_AUTH", "Lỗi lấy user: ${e.message}")
+        // Fallback về local database nếu lỗi
+        db.userDao().getUser().first()?.toDomain()
+    }
+}
 
     override suspend fun sendPasswordResetEmail(email: String): Resource<Boolean> {
         return try {

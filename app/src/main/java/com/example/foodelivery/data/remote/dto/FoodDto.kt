@@ -1,6 +1,6 @@
 package com.example.foodelivery.data.remote.dto
 import com.google.firebase.firestore.DocumentId
-
+import com.google.firebase.firestore.PropertyName // [1] Nhớ Import cái này
 data class FoodDto(
     @DocumentId val id: String = "",
     val name: String? = null,
@@ -9,5 +9,6 @@ data class FoodDto(
     val imageUrl: String? = null,
     val categoryId: String? = null,
     val rating: Double? = null,
+    @get:PropertyName("isAvailable")
     val isAvailable: Boolean? = true
 )

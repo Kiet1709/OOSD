@@ -3,8 +3,10 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.gms.google.services)
-    id("kotlin-kapt")
+//    id("kotlin-kapt")
     id("com.google.dagger.hilt.android") version "2.51.1"
+
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -17,8 +19,17 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+        multiDexEnabled = true // <--- [1] THÊM DÒNG NÀY
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("x86", "x86_64") // Cần thiết cho giả lập LDPlayer
+            isUniversalApk = false
+        }
     }
 
     buildTypes {
@@ -66,7 +77,7 @@ dependencies {
 
     // --- 1. HILT (QUAN TRỌNG: Để dùng @Inject) ---
         implementation("com.google.dagger:hilt-android:2.51.1")
-    kapt("com.google.dagger:hilt-android-compiler:2.51.1")
+//    kapt("com.google.dagger:hilt-android-compiler:2.51.1")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0") // Để inject ViewModel trong Navigation
 
     // --- 2. FIREBASE (BỔ SUNG CÁC MODULE THIẾU) ---
@@ -94,6 +105,10 @@ dependencies {
 
     implementation("androidx.compose.material:material-icons-extended:1.5.4")
 
+    // Google Maps Compose (Thư viện vẽ Map cho Jetpack Compose)
+    implementation("com.google.maps.android:maps-compose:4.3.0")
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
+
 
     // thêm
     val room_version = "2.7.0-alpha07" // Hoặc bản alpha mới nhất
@@ -101,5 +116,18 @@ dependencies {
     implementation("androidx.room:room-ktx:$room_version")
 
     // [THÊM DÒNG NÀY]: Bắt buộc phải có để sinh code Database
-    kapt("androidx.room:room-compiler:$room_version")
+//    kapt("androidx.room:room-compiler:$room_version")
+
+// --- HILT (DÙNG KSP) ---
+    implementation("com.google.dagger:hilt-android:2.51.1")
+    ksp("com.google.dagger:hilt-android-compiler:2.51.1") // [QUAN TRỌNG]: Đổi kapt -> ksp
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+
+    // --- ROOM (DÙNG KSP) ---
+    // Sử dụng bản ổn định 2.6.1 để tránh lỗi Alpha, trừ khi bạn bắt buộc cần KMP
+    val roomVersion = "2.6.1"
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
+    ksp("androidx.room:room-compiler:$roomVersion") // [QUAN TRỌNG]: Đổi kapt -> ksp
+    implementation("androidx.multidex:multidex:2.0.1") // <--- [2] THÊM DÒNG NÀY
 }

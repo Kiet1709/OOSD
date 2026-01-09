@@ -2,6 +2,7 @@ package com.example.foodelivery.di
 
 import com.example.foodelivery.data.repository.CategoryRepositoryImpl
 import com.example.foodelivery.domain.repository.ICategoryRepository
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -10,11 +11,11 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object CategoryModule {
+abstract class CategoryModule {
 
-    @Provides
+    @Binds
     @Singleton
-    fun provideCategoryRepository(): ICategoryRepository {
-        return CategoryRepositoryImpl()
-    }
+    abstract fun bindCategoryRepository(
+        categoryRepositoryImpl: CategoryRepositoryImpl
+    ): ICategoryRepository
 }

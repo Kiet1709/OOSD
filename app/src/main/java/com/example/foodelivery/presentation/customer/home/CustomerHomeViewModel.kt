@@ -2,6 +2,9 @@ package com.example.foodelivery.presentation.customer.home
 
 import androidx.lifecycle.viewModelScope
 import com.example.foodelivery.core.base.BaseViewModel
+import com.example.foodelivery.core.common.Resource
+import com.example.foodelivery.domain.repository.ICategoryRepository
+import com.example.foodelivery.domain.repository.IFoodRepository
 import com.example.foodelivery.domain.repository.IUserRepository
 import com.example.foodelivery.presentation.customer.home.contract.*
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -11,73 +14,122 @@ import javax.inject.Inject
 
 @HiltViewModel
 class CustomerHomeViewModel @Inject constructor(
-    private val userRepository: IUserRepository
+    private val userRepository: IUserRepository,
+    private val foodRepository: IFoodRepository,
+    private val categoryRepository: ICategoryRepository
 ) : BaseViewModel<CustomerHomeState, CustomerHomeIntent, CustomerHomeEffect>(CustomerHomeState()) {
 
     init {
         handleIntent(CustomerHomeIntent.LoadHomeData)
     }
 
+    fun setEvent(intent: CustomerHomeIntent) = handleIntent(intent)
+
     override fun handleIntent(intent: CustomerHomeIntent) {
         when(intent) {
+           CustomerHomeIntent.ClickViewAllPopular -> setEffect {
+                CustomerHomeEffect.NavigateToFoodList("popular")
+            }
+            CustomerHomeIntent.ClickViewAllRecommended -> setEffect {
+                CustomerHomeEffect.NavigateToFoodList("recommended")
+            }
+
             CustomerHomeIntent.LoadHomeData -> loadData()
             CustomerHomeIntent.Refresh -> loadData()
 
-            is CustomerHomeIntent.ClickFood -> setEffect { CustomerHomeEffect.NavigateToFoodDetail(intent.foodId) }
-            is CustomerHomeIntent.ClickCategory -> setEffect { CustomerHomeEffect.NavigateToCategory(intent.categoryId) }
+            is CustomerHomeIntent.ClickFood -> setEffect {
+                CustomerHomeEffect.NavigateToFoodDetail(intent.foodId)
+            }
+            is CustomerHomeIntent.ClickCategory -> setEffect {
+                CustomerHomeEffect.NavigateToCategory(intent.categoryId)
+            }
+            // [THÊM MỚI]: Xử lý click vào menu đơn hàng
+            CustomerHomeIntent.ClickCurrentOrder -> {
+                setEffect { CustomerHomeEffect.NavigateToTracking("ORD-CURRENT-DEMO") }
+            }
 
             CustomerHomeIntent.ClickCart -> setEffect { CustomerHomeEffect.NavigateToCart }
             CustomerHomeIntent.ClickProfile -> setEffect { CustomerHomeEffect.NavigateToProfile }
-            CustomerHomeIntent.ClickSearch -> setEffect { CustomerHomeEffect.ShowToast("Tính năng tìm kiếm đang phát triển") }
+            CustomerHomeIntent.ClickSearch -> setEffect {
+                CustomerHomeEffect.ShowToast("Tính năng tìm kiếm đang phát triển")
+            }
 
-            // [THÊM MỚI]: Xử lý Menu Header
             CustomerHomeIntent.ClickSettings -> setEffect { CustomerHomeEffect.NavigateToSettings }
             CustomerHomeIntent.ClickLogout -> logout()
         }
     }
 
-    // Public fun cho UI gọi
-    fun setEvent(intent: CustomerHomeIntent) = handleIntent(intent)
-
-    // Xử lý đăng xuất
     private fun logout() {
         viewModelScope.launch {
-            // 1. Gọi Repository để xóa token/cache
             userRepository.logout()
-            // 2. Thông báo UI chuyển màn hình
-            setEffect { CustomerHomeEffect.ShowToast("Đăng xuất thành công!") }
-            delay(500) // Delay xíu cho User đọc Toast
+            setEffect { CustomerHomeEffect.ShowToast("Đã đăng xuất!") }
+            delay(500)
             setEffect { CustomerHomeEffect.NavigateToLogin }
         }
     }
 
     private fun loadData() {
         viewModelScope.launch {
-            // Mock Data
-            val mockCategories = listOf(
-                CategoryUiModel("1", "Burger", "https://cdn-icons-png.flaticon.com/512/3075/3075977.png"),
-                CategoryUiModel("2", "Pizza", "https://cdn-icons-png.flaticon.com/512/1404/1404945.png"),
-                CategoryUiModel("3", "Cơm", "https://cdn-icons-png.flaticon.com/512/261/261444.png"),
-                CategoryUiModel("4", "Đồ uống", "https://cdn-icons-png.flaticon.com/512/2405/2405597.png")
-            )
+            setState { copy(isLoading = true) }
 
-            val mockFoods = listOf(
-                FoodUiModel("f1", "Burger Bò Phô Mai", "https://images.unsplash.com/photo-1568901346375-23c9450c58cd", 55000.0, 4.8, "15-20 min"),
-                FoodUiModel("f2", "Pizza Hải Sản", "https://images.unsplash.com/photo-1513104890138-7c749659a591", 120000.0, 4.5, "25-30 min"),
-                FoodUiModel("f3", "Cơm Tấm Sườn Bì", "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2", 45000.0, 4.9, "10-15 min")
-            )
+            // 1. ✅ Lấy Categories từ Firebase
+            launch {
+                categoryRepository.getCategories().collect { result ->
+                    when (result) {
+                        is Resource.Success -> {
+                            val categories = result.data?.map { category ->
+                                CategoryUiModel(
+                                    id = category.id,
+                                    name = category.name,
+                                    iconUrl = category.imageUrl
+                                )
+                            } ?: emptyList()
 
-            // Lấy thông tin User
-            userRepository.getUser().collect { user ->
-                setState {
-                    copy(
-                        isLoading = false,
-                        userName = user?.name ?: "Khách hàng",
-                        avatarUrl = if (user?.avatarUrl.isNullOrBlank()) "https://i.pravatar.cc/150?img=12" else user!!.avatarUrl,
-                        categories = mockCategories,
-                        popularFoods = mockFoods,
-                        recommendedFoods = mockFoods.shuffled()
-                    )
+                            android.util.Log.d("HomeVM", "✅ Categories loaded: ${categories.size}")
+                            setState { copy(categories = categories) }
+                        }
+                        is Resource.Error -> {
+                            android.util.Log.e("HomeVM", "❌ Error categories: ${result.message}")
+                        }
+                        else -> {}
+                    }
+                }
+            }
+
+            // 2. ✅ Lấy User
+            launch {
+                userRepository.getUser().collect { user ->
+                    setState { copy(user = user) }
+                }
+            }
+
+            // 3. ✅ Lấy Foods
+            launch {
+                foodRepository.getMenu().collect { result ->
+                    when (result) {
+                        is Resource.Success -> {
+                            val foods = result.data ?: emptyList()
+                            android.util.Log.d("HomeVM", "✅ Foods loaded: ${foods.size}")
+
+                            setState {
+                                copy(
+                                    isLoading = false,
+                                    popularFoods = foods.sortedByDescending { it.rating }.take(10),
+                                    recommendedFoods = foods.shuffled().take(10)
+                                )
+                            }
+                        }
+                        is Resource.Loading -> {
+                            if (uiState.value.popularFoods.isEmpty()) {
+                                setState { copy(isLoading = true) }
+                            }
+                        }
+                        is Resource.Error -> {
+                            android.util.Log.e("HomeVM", "❌ Error foods: ${result.message}")
+                            setState { copy(isLoading = false) }
+                            setEffect { CustomerHomeEffect.ShowToast(result.message ?: "Lỗi tải món ăn") }
+                        }
+                    }
                 }
             }
         }

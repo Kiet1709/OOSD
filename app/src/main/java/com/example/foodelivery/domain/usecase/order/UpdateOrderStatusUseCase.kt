@@ -5,10 +5,22 @@ import com.example.foodelivery.domain.repository.IOrderRepository
 import javax.inject.Inject
 
 class UpdateOrderStatusUseCase @Inject constructor(
-    private val repository: IOrderRepository
+    private val orderRepository: IOrderRepository
 ) {
-    suspend operator fun invoke(orderId: String, status: String): Resource<Boolean> {
-        // Admin update thì không cần driverId
-        return repository.updateOrderStatus(orderId, status, null)
+
+    suspend operator fun invoke(
+        orderId: String,
+        status: String,
+        driverId: String? = null
+    ): Resource<Boolean> {
+        if (orderId.isBlank()) {
+            return Resource.Error("Order ID không hợp lệ")
+        }
+
+        if (status.isBlank()) {
+            return Resource.Error("Status không hợp lệ")
+        }
+
+        return orderRepository.updateOrderStatus(orderId, status, driverId)
     }
 }

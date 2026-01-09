@@ -19,31 +19,35 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.foodelivery.presentation.customer.food.list.contract.*
-import com.example.foodelivery.presentation.customer.home.components.FoodCard // Tái sử dụng từ Home
+import com.example.foodelivery.presentation.customer.home.components.FoodCard
 import com.example.foodelivery.ui.theme.PrimaryColor
+import com.example.foodelivery.ui.theme.navigation.Route // ✅ THÊM IMPORT
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FoodListScreen(
     navController: NavController,
-    type: String, // popular, recommended, categoryId...
+    type: String,
     viewModel: FoodListViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // Load data khi vào màn hình
     LaunchedEffect(type) {
         viewModel.setEvent(FoodListIntent.LoadList(type))
     }
 
-    // Handle Effects
     LaunchedEffect(Unit) {
         viewModel.effect.collect { effect ->
             when(effect) {
                 FoodListEffect.NavigateBack -> navController.popBackStack()
-                is FoodListEffect.NavigateToDetail -> navController.navigate("food_detail/${effect.id}")
-                is FoodListEffect.ShowToast -> Toast.makeText(context, effect.msg, Toast.LENGTH_SHORT).show()
+
+                // ✅ FIX: Dùng Route.CustomerFoodDetail.createRoute
+                is FoodListEffect.NavigateToDetail ->
+                    navController.navigate(Route.CustomerFoodDetail.createRoute(effect.id))
+
+                is FoodListEffect.ShowToast ->
+                    Toast.makeText(context, effect.msg, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -54,7 +58,7 @@ fun FoodListScreen(
                 title = { Text(state.title) },
                 navigationIcon = {
                     IconButton(onClick = { viewModel.setEvent(FoodListIntent.ClickBack) }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = null)
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
@@ -76,12 +80,9 @@ fun FoodListScreen(
                     contentPadding = PaddingValues(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier
-                        .padding(padding)
-                        .fillMaxSize()
-                        .background(Color(0xFFF9F9F9))
+                    modifier = Modifier.padding(padding).fillMaxSize().background(Color(0xFFF9F9F9))
                 ) {
-                    items(state.foods) { food ->
+                    items(state.foods, key = { it.id }) { food ->
                         FoodCard(
                             food = food,
                             onClick = { viewModel.setEvent(FoodListIntent.ClickFood(food.id)) }

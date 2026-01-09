@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.List // [1] Icon đơn hàng
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -20,20 +21,19 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.example.foodelivery.domain.model.User
 import com.example.foodelivery.ui.theme.PrimaryColor
 
 @Composable
 fun HomeHeader(
-    userName: String,
-    avatarUrl: String?,
+    user: User?,
     modifier: Modifier = Modifier,
-    // [CÁC SỰ KIỆN CLICK]
-    onCartClick: () -> Unit,      // Click giỏ hàng
-    onProfileClick: () -> Unit,   // Click menu: Hồ sơ
-    onSettingsClick: () -> Unit,  // Click menu: Cài đặt
-    onLogoutClick: () -> Unit     // Click menu: Đăng xuất
+    onCartClick: () -> Unit,
+    onOrderClick: () -> Unit, // [2] Thêm callback click đơn hàng
+    onProfileClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+    onLogoutClick: () -> Unit
 ) {
-    // 1. Biến trạng thái để Bật/Tắt Menu
     var isMenuExpanded by remember { mutableStateOf(false) }
 
     Row(
@@ -43,17 +43,17 @@ fun HomeHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // --- PHẦN TRÁI: AVATAR & LỜI CHÀO (BỌC TRONG BOX ĐỂ GẮN MENU) ---
+        // --- AVATAR & INFO ---
         Box {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .clickable { isMenuExpanded = true } // <--- Bấm vào đây để mở Menu
+                    .clickable { isMenuExpanded = true }
                     .padding(4.dp)
             ) {
                 AsyncImage(
-                    model = avatarUrl ?: "https://i.pravatar.cc/150?img=12",
+                    model = user?.avatarUrl?.ifBlank { "https://i.pravatar.cc/150?img=12" } ?: "https://i.pravatar.cc/150?img=12",
                     contentDescription = "Avatar",
                     modifier = Modifier
                         .size(45.dp)
@@ -69,54 +69,46 @@ fun HomeHeader(
                         color = Color.Gray
                     )
                     Text(
-                        text = userName,
+                        text = user?.name ?: "Khách hàng",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
 
-            // --- MENU XỔ XUỐNG (DROPDOWN) ---
+            // --- MENU ---
             DropdownMenu(
                 expanded = isMenuExpanded,
-                onDismissRequest = { isMenuExpanded = false }, // Bấm ra ngoài thì đóng
+                onDismissRequest = { isMenuExpanded = false },
                 modifier = Modifier.background(Color.White)
             ) {
-                // Item 1: Hồ sơ
+                // [3] THÊM MỤC ĐƠN HÀNG VÀO ĐÂY
+                DropdownMenuItem(
+                    text = { Text("Đơn hàng của tôi") },
+                    onClick = { isMenuExpanded = false; onOrderClick() },
+                    leadingIcon = { Icon(Icons.Default.List, contentDescription = null) }
+                )
+
                 DropdownMenuItem(
                     text = { Text("Hồ sơ cá nhân") },
-                    onClick = {
-                        isMenuExpanded = false
-                        onProfileClick()
-                    },
+                    onClick = { isMenuExpanded = false; onProfileClick() },
                     leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) }
                 )
-
-                // Item 2: Cài đặt
                 DropdownMenuItem(
                     text = { Text("Cài đặt") },
-                    onClick = {
-                        isMenuExpanded = false
-                        onSettingsClick()
-                    },
+                    onClick = { isMenuExpanded = false; onSettingsClick() },
                     leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) }
                 )
-
-                HorizontalDivider() // Kẻ vạch ngăn cách
-
-                // Item 3: Đăng xuất
+                HorizontalDivider()
                 DropdownMenuItem(
                     text = { Text("Đăng xuất", color = Color.Red, fontWeight = FontWeight.Bold) },
-                    onClick = {
-                        isMenuExpanded = false
-                        onLogoutClick()
-                    },
+                    onClick = { isMenuExpanded = false; onLogoutClick() },
                     leadingIcon = { Icon(Icons.Default.ExitToApp, contentDescription = null, tint = Color.Red) }
                 )
             }
         }
 
-        // --- PHẦN PHẢI: NÚT GIỎ HÀNG (GIỮ NGUYÊN) ---
+        // --- GIỎ HÀNG ---
         IconButton(
             onClick = onCartClick,
             modifier = Modifier

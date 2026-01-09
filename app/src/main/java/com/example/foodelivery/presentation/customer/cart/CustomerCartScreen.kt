@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -42,7 +43,12 @@ fun CustomerCartScreen(
             when(effect) {
                 is CartEffect.ShowToast -> Toast.makeText(context, effect.msg, Toast.LENGTH_SHORT).show()
                 is CartEffect.NavigateToHome -> navController.popBackStack()
-                is CartEffect.NavigateToCheckout -> { /* TODO: Nav to Checkout */ }
+
+                // [FIX LỖI CÚ PHÁP CŨ]: Xử lý chuyển sang Tracking
+                is CartEffect.NavigateToTracking -> {
+                    // Đảm bảo AppNavGraph đã có route: "tracking/{orderId}"
+                    navController.navigate("customer_tracking/${effect.orderId}")
+                }
             }
         }
     }
@@ -78,7 +84,15 @@ fun CustomerCartScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // List Items (Dùng key foodId để tối ưu hiệu năng)
+                // [THÊM MỚI]: Ô NHẬP ĐỊA CHỈ (Nằm trên cùng)
+                item {
+                    AddressInputSection(
+                        address = state.address,
+                        onValueChange = { viewModel.setEvent(CartIntent.UpdateAddress(it)) }
+                    )
+                }
+
+                // Danh sách món ăn
                 items(state.items, key = { it.foodId }) { item ->
                     CartItemCard(
                         item = item,
@@ -87,13 +101,49 @@ fun CustomerCartScreen(
                         onRemove = { viewModel.setEvent(CartIntent.RemoveItem(item.foodId)) }
                     )
                 }
-                // Bill Summary
+
+                // Tổng hóa đơn
                 item {
                     CartBillSummary(state.subTotal, state.deliveryFee, state.discountAmount, state.finalTotal)
                 }
-                // Spacer
+
+                // Khoảng trắng dưới cùng để không bị che bởi BottomBar
                 item { Spacer(modifier = Modifier.height(16.dp)) }
             }
+        }
+    }
+}
+
+// --- CÁC COMPONENT CON ---
+
+@Composable
+fun AddressInputSection(address: String, onValueChange: (String) -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(2.dp),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.LocationOn, contentDescription = null, tint = PrimaryColor)
+                Spacer(Modifier.width(8.dp))
+                Text("Địa chỉ nhận hàng", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            }
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = address,
+                onValueChange = onValueChange,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Số nhà, tên đường...") },
+                singleLine = true,
+                shape = RoundedCornerShape(8.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PrimaryColor,
+                    focusedLabelColor = PrimaryColor,
+                    cursorColor = PrimaryColor
+                )
+            )
         }
     }
 }

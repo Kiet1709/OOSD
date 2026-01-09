@@ -26,8 +26,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.foodelivery.core.common.toVndCurrency
-import com.example.foodelivery.presentation.customer.food.detail.Contract.* // Import các file Contract mới
+import com.example.foodelivery.presentation.customer.food.detail.Contract.*
 import com.example.foodelivery.ui.theme.PrimaryColor
+import com.example.foodelivery.ui.theme.navigation.Route // ✅ THÊM IMPORT
 
 @Composable
 fun FoodDetailScreen(
@@ -38,20 +39,17 @@ fun FoodDetailScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // 1. Load dữ liệu khi vào màn hình
     LaunchedEffect(foodId) {
         viewModel.setEvent(FoodDetailIntent.LoadDetail(foodId))
     }
 
-    // 2. Lắng nghe hiệu ứng (Toast, Back)
     LaunchedEffect(Unit) {
         viewModel.effect.collect { effect ->
             when(effect) {
                 FoodDetailEffect.NavigateBack -> navController.popBackStack()
                 is FoodDetailEffect.ShowToast -> Toast.makeText(context, effect.msg, Toast.LENGTH_SHORT).show()
                 FoodDetailEffect.NavigateToCart -> {
-                    // Chuyển sang giỏ hàng nếu muốn (hoặc chỉ show toast)
-                    // navController.navigate("cart_screen")
+                    navController.navigate(Route.CustomerCart.path)
                 }
             }
         }
@@ -59,20 +57,14 @@ fun FoodDetailScreen(
 
     Scaffold(
         bottomBar = {
-            // Chỉ hiện nút khi dữ liệu đã tải xong
             if (!state.isLoading && state.food != null) {
                 Button(
                     onClick = { viewModel.setEvent(FoodDetailIntent.ClickAddToCart) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .height(54.dp),
+                    modifier = Modifier.fillMaxWidth().padding(16.dp).height(54.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor),
-                    shape = RoundedCornerShape(12.dp),
-                    elevation = ButtonDefaults.buttonElevation(4.dp)
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
-                        // [QUAN TRỌNG]: Hiển thị tổng tiền (totalPrice) thay vì giá đơn
                         text = "Thêm vào giỏ - ${state.totalPrice.toVndCurrency()}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
@@ -81,119 +73,62 @@ fun FoodDetailScreen(
             }
         }
     ) { padding ->
-        Box(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .background(Color.White)
-        ) {
+        Box(modifier = Modifier.padding(padding).fillMaxSize().background(Color.White)) {
             if (state.isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center),
-                    color = PrimaryColor
-                )
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = PrimaryColor)
             } else {
                 state.food?.let { food ->
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.White)
-                    ) {
-                        // --- PHẦN 1: ẢNH HEADER ---
-                        Box(
-                            modifier = Modifier
-                                .height(280.dp)
-                                .fillMaxWidth()
-                        ) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Box(modifier = Modifier.height(280.dp).fillMaxWidth()) {
                             AsyncImage(
                                 model = food.imageUrl,
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )
-                            // Nút Back
                             IconButton(
                                 onClick = { viewModel.setEvent(FoodDetailIntent.ClickBack) },
-                                modifier = Modifier
-                                    .padding(top = 40.dp, start = 16.dp)
-                                    .background(Color.White.copy(0.8f), CircleShape)
+                                modifier = Modifier.padding(top = 40.dp, start = 16.dp).background(Color.White.copy(0.8f), CircleShape)
                             ) {
                                 Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.Black)
                             }
                         }
-
-                        // --- PHẦN 2: NỘI DUNG ---
                         Column(modifier = Modifier.padding(24.dp)) {
-                            // Tên và Giá
-                            Text(
-                                text = food.name,
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-
+                            Text(text = food.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.height(8.dp))
-
-                            // Rating và Thời gian
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Star, null, tint = Color(0xFFFFC107), modifier = Modifier.size(20.dp))
-                                Text(
-                                    text = " ${food.rating} • ${food.time} • Giao hàng nhanh",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.Gray
-                                )
+                                // [SỬA]: Thêm text cứng 20 min vì food chưa có time
+                                Text(text = " ${food.rating} • 20 min • Giao hàng nhanh", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
                             }
-
                             Spacer(modifier = Modifier.height(24.dp))
-
-                            // Mô tả
                             Text(text = "Mô tả", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Món ăn được chế biến từ những nguyên liệu tươi ngon nhất, hương vị đậm đà khó quên. Hãy thưởng thức ngay!",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.Gray,
-                                lineHeight = MaterialTheme.typography.bodyLarge.lineHeight
+                                text = "Món ăn ngon tuyệt vời, hãy thử ngay!",
+                                style = MaterialTheme.typography.bodyMedium, color = Color.Gray
                             )
-
                             Spacer(modifier = Modifier.height(32.dp))
-
-                            // --- PHẦN 3: TĂNG GIẢM SỐ LƯỢNG ---
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.align(Alignment.CenterHorizontally)
-                            ) {
-                                // Nút Trừ
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.align(Alignment.CenterHorizontally)) {
                                 FilledIconButton(
                                     onClick = { viewModel.setEvent(FoodDetailIntent.DecreaseQuantity) },
                                     colors = IconButtonDefaults.filledIconButtonColors(containerColor = Color(0xFFF5F5F5)),
-                                    shape = RoundedCornerShape(8.dp),
                                     modifier = Modifier.size(44.dp)
-                                ) {
-                                    Icon(Icons.Default.Remove, null, tint = Color.Black)
-                                }
-
-                                // Số lượng
+                                ) { Icon(Icons.Default.Remove, null, tint = Color.Black) }
                                 Text(
                                     text = String.format("%02d", state.quantity),
                                     style = MaterialTheme.typography.headlineMedium,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(horizontal = 24.dp)
                                 )
-
-                                // Nút Cộng
                                 FilledIconButton(
                                     onClick = { viewModel.setEvent(FoodDetailIntent.IncreaseQuantity) },
                                     colors = IconButtonDefaults.filledIconButtonColors(containerColor = PrimaryColor),
-                                    shape = RoundedCornerShape(8.dp),
                                     modifier = Modifier.size(44.dp)
-                                ) {
-                                    Icon(Icons.Default.Add, null, tint = Color.White)
-                                }
+                                ) { Icon(Icons.Default.Add, null, tint = Color.White) }
                             }
                         }
                     }
-                } ?: Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Không tìm thấy thông tin món ăn", color = Color.Gray)
                 }
             }
         }

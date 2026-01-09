@@ -9,4 +9,12 @@ data class CartItem(
     val note: String
 ) {
     val totalPrice: Double get() = price * quantity
+
+    fun isValid(): Boolean {
+        return foodId.isNotEmpty() &&
+                name.isNotEmpty() &&
+                price > 0 &&
+                quantity > 0 &&
+                imageUrl.isNotEmpty()
+    }
 }

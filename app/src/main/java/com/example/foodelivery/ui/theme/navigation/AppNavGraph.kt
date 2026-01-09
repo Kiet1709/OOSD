@@ -30,9 +30,12 @@ import com.example.foodelivery.presentation.customer.food.detail.FoodDetailScree
 import com.example.foodelivery.presentation.customer.profile.CustomerProfileScreen
 import com.example.foodelivery.presentation.customer.tracking.CustomerTrackingScreen
 import com.example.foodelivery.presentation.customer.food.list.FoodListScreen
+import com.example.foodelivery.presentation.customer.profile.editprofile.CustomerEditProfileScreen
 // --- 4. IMPORT DRIVER ---
 import com.example.foodelivery.presentation.driver.dashboard.DriverDashboardScreen
 import com.example.foodelivery.presentation.driver.delivery.DriverDeliveryScreen
+import com.example.foodelivery.presentation.driver.profile.DriverProfileScreen
+import com.example.foodelivery.presentation.driver.profile.editprofile.DriverEditProfileScreen
 
 @Composable
 fun AppNavGraph(
@@ -225,16 +228,9 @@ fun NavGraphBuilder.customerGraph(navController: NavHostController) {
             CustomerTrackingScreen(navController = navController, orderId = orderId)
         }
 
-        // Các màn hình Placeholder khác
-        composable(Route.CustomerAddress.path) {
-            androidx.compose.material3.Text("Màn hình Địa chỉ (Đang phát triển)")
-        }
-        composable(Route.CustomerOrderHistory.path) {
-            androidx.compose.material3.Text("Màn hình Lịch sử đơn hàng (Đang phát triển)")
-        }
+        // 7.EDIT PROFILE
         composable(Route.CustomerEditProfile.path) {
-            androidx.compose.material3.Text("Màn hình Chỉnh sửa hồ sơ (Đang phát triển)")
-        }
+            CustomerEditProfileScreen(navController = navController)        }
     }
 }
 
@@ -252,5 +248,14 @@ fun NavGraphBuilder.driverGraph(navController: NavHostController) {
             val orderId = backStackEntry.arguments?.getString(Route.DriverDelivery.ARG_ORDER_ID) ?: ""
             DriverDeliveryScreen(navController, orderId = orderId)
         }
+    }
+
+    composable(Route.DriverProfile.path) {
+        DriverProfileScreen(navController = navController)
+    }
+
+    // 4. Edit Profile
+    composable(Route.DriverEditProfile.path) {
+        DriverEditProfileScreen(navController = navController)
     }
 }

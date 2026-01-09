@@ -10,4 +10,7 @@ sealed class CustomerHomeEffect : ViewSideEffect {
     data class ShowToast(val msg: String) : CustomerHomeEffect()
     object NavigateToSettings : CustomerHomeEffect()
     object NavigateToLogin : CustomerHomeEffect()
+    data class NavigateToFoodList(val type: String) : CustomerHomeEffect()
+    data class NavigateToTracking(val orderId: String) : CustomerHomeEffect()
+
 }

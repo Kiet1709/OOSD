@@ -14,10 +14,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.foodelivery.core.common.toVndCurrency
 import com.example.foodelivery.presentation.driver.delivery.contract.DeliveryOrderInfo
 import com.example.foodelivery.presentation.driver.delivery.contract.DeliveryStep
 import com.example.foodelivery.ui.theme.PrimaryColor
+import java.text.NumberFormat
+import java.util.Locale
 
 @Composable
 fun DeliveryBottomSheet(
@@ -35,12 +36,13 @@ fun DeliveryBottomSheet(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
-            // 1. Chỉ dẫn (Instruction)
+
+            // 1. Header: Trạng thái hiện tại
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Navigation, null, tint = PrimaryColor)
+                Icon(Icons.Default.Navigation, contentDescription = null, tint = PrimaryColor)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = currentStep.instruction, // VD: "Di chuyển đến nhà hàng"
+                    text = currentStep.instruction,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = PrimaryColor
@@ -51,60 +53,90 @@ fun DeliveryBottomSheet(
             Divider(color = Color(0xFFF0F0F0))
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 2. Thông tin đối tác (Quán hoặc Khách tùy giai đoạn)
+            // 2. Thông tin chính (Logic hiển thị tùy theo bước)
+            // Nếu đang đi lấy món -> Hiện tên Quán. Nếu đang đi giao -> Hiện tên Khách.
             val isPickupPhase = currentStep == DeliveryStep.HEADING_TO_RESTAURANT || currentStep == DeliveryStep.PICKING_UP
-            val name = if (isPickupPhase) order.restaurantName else order.customerName
-            val address = if (isPickupPhase) order.restaurantAddress else order.customerAddress
-            val icon = if (isPickupPhase) Icons.Default.Store else Icons.Default.Person
+
+            val displayTitle = if (isPickupPhase) order.restaurantName else order.customerName
+            val displayAddress = if (isPickupPhase) order.restaurantAddress else order.customerAddress
+            val displayIcon = if (isPickupPhase) Icons.Default.Store else Icons.Default.Person
 
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // Avatar / Icon
                 Surface(
-                    shape = CircleShape, color = Color(0xFFF5F5F5),
+                    shape = CircleShape,
+                    color = Color(0xFFF5F5F5),
                     modifier = Modifier.size(50.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(icon, null, tint = Color.Gray)
+                        Icon(displayIcon, contentDescription = null, tint = Color.Gray)
                     }
                 }
+
                 Spacer(modifier = Modifier.width(16.dp))
+
+                // Text Info
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text(address, style = MaterialTheme.typography.bodyMedium, color = Color.Gray, maxLines = 2)
+                    Text(
+                        text = displayTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = displayAddress,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray,
+                        maxLines = 2
+                    )
                 }
 
-                // Các nút phụ: Gọi, Map
-                IconButton(onClick = onCall, modifier = Modifier.background(Color(0xFFE0F7FA), CircleShape)) {
-                    Icon(Icons.Default.Call, null, tint = PrimaryColor)
+                // Action Buttons (Gọi / Map)
+                IconButton(
+                    onClick = onCall,
+                    modifier = Modifier.background(Color(0xFFE0F7FA), CircleShape)
+                ) {
+                    Icon(Icons.Default.Call, contentDescription = "Call", tint = PrimaryColor)
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                IconButton(onClick = onMapClick, modifier = Modifier.background(Color(0xFFE0F7FA), CircleShape)) {
-                    Icon(Icons.Default.Map, null, tint = PrimaryColor)
+                IconButton(
+                    onClick = onMapClick,
+                    modifier = Modifier.background(Color(0xFFE0F7FA), CircleShape)
+                ) {
+                    Icon(Icons.Default.Map, contentDescription = "Map", tint = PrimaryColor)
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // 3. Thu tiền (COD)
+            // 3. Hiển thị tiền thu hộ (COD) nếu có
             if (order.totalAmount > 0) {
+                val formattedPrice = NumberFormat.getCurrencyInstance(Locale("vi", "VN")).format(order.totalAmount)
                 Row(
-                    modifier = Modifier.fillMaxWidth().background(Color(0xFFFFF3E0), RoundedCornerShape(8.dp)).padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFFFF3E0), RoundedCornerShape(8.dp))
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Thu tiền mặt:", fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
-                    Text(order.totalAmount.toVndCurrency(), fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
+                    Text(formattedPrice, fontWeight = FontWeight.Bold, color = Color(0xFFE65100), fontSize = 18.sp)
                 }
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // 4. NÚT HÀNH ĐỘNG CHÍNH (MAIN ACTION)
+            // 4. Nút Hành động chính (Nút to nhất)
             Button(
                 onClick = onMainAction,
-                modifier = Modifier.fillMaxWidth().height(54.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)
             ) {
                 Text(
-                    text = currentStep.buttonText, // VD: "ĐÃ ĐẾN QUÁN"
+                    text = currentStep.buttonText,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )

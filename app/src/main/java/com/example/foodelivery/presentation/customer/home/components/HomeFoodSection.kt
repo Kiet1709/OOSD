@@ -20,14 +20,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.foodelivery.core.common.toVndCurrency
-import com.example.foodelivery.presentation.customer.home.contract.FoodUiModel
+import com.example.foodelivery.domain.model.Food
 import com.example.foodelivery.ui.theme.PrimaryColor
 
 @Composable
 fun HomeFoodSection(
     title: String,
-    foods: List<FoodUiModel>,
+    foods: List<Food>,
     onFoodClick: (String) -> Unit,
+    onViewAllClick: () -> Unit, // ✅ THÊM callback này
     modifier: Modifier = Modifier // [QUAN TRỌNG]: Phải có tham số này
 ) {
     Column(modifier = modifier) {
@@ -48,7 +49,8 @@ fun HomeFoodSection(
                 text = "Xem tất cả",
                 color = PrimaryColor,
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.clickable { /* Handle View All */ }
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.clickable { onViewAllClick() }
             )
         }
 
@@ -65,7 +67,7 @@ fun HomeFoodSection(
 }
 
 @Composable
-fun FoodCard(food: FoodUiModel, onClick: () -> Unit) {
+fun FoodCard(food: Food, onClick: () -> Unit) {
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -123,7 +125,7 @@ fun FoodCard(food: FoodUiModel, onClick: () -> Unit) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = food.time,
+                        text = "",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.Gray
                     )

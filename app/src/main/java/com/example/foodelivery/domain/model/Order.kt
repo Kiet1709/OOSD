@@ -1,5 +1,7 @@
 package com.example.foodelivery.domain.model
 
+import java.io.Serializable
+
 data class Order(
     val id: String,
     val userId: String,
@@ -9,19 +11,26 @@ data class Order(
     val shippingAddress: String, // Chuẩn hóa
     val timestamp: Long,         // Dùng Long cho dễ xử lý
     val items: List<CartItem>
-) {
-//    // Logic Senior: Computed Properties (Tính toán trực tiếp trong Model)
-//
-//    // Format ngày tháng hiển thị (VD: "12:30 - 20/10/2023")
-//    fun getFormattedDate(): String {
-//        val date = java.util.Date(createdAt)
-//        val format = java.text.SimpleDateFormat("HH:mm - dd/MM/yyyy", java.util.Locale.getDefault())
-//        return format.format(date)
-//    }
-//
-//    // Kiểm tra đơn hàng có cho phép hủy không? (Chỉ hủy khi còn PENDING)
-//    fun canCancel(): Boolean {
-//        return status == OrderStatus.PENDING
-//    }
+): Serializable {
 
+    // ===== Computed Properties =====
+    val itemCount: Int get() = items.sumOf { it.quantity }
+
+    val isCompleted: Boolean get() = status == OrderStatus.DELIVERED
+
+    val isCancelled: Boolean get() = status == OrderStatus.CANCELLED
+
+    val canBeCancelled: Boolean get() =
+        status == OrderStatus.PENDING || status == OrderStatus.CONFIRMED
+
+    val isDelivering: Boolean get() = status == OrderStatus.DELIVERING
+
+    // ===== Validation =====
+    fun isValid(): Boolean {
+        return id.isNotEmpty() &&
+                userId.isNotEmpty() &&
+                status != OrderStatus.PENDING || shippingAddress.isNotEmpty() &&
+                totalPrice > 0 &&
+                items.isNotEmpty()
+    }
 }

@@ -14,8 +14,8 @@ fun UserEntity.toDomain(): User {
         role = this.role ?: "user",
 
         avatarUrl = this.avatarUrl ?: "",
-        address = null // Hoặc this.address nếu Entity có trường này
-    )
+// [SỬA]: Lấy địa chỉ từ Entity thay vì để null
+        address = this.address    )
 }
 
 // 2. Chuyển từ DTO (API) -> Entity (DB)
@@ -26,6 +26,8 @@ fun UserDto.toEntity(): UserEntity {
         email = this.email ?: "",
         phoneNumber = this.phoneNumber,
         avatarUrl = this.avatarUrl,
+        // [SỬA]: Lấy địa chỉ từ Entity thay vì để null
+        address = this.address,
         role = this.role ?: "customer"
     )
 }
@@ -38,6 +40,8 @@ fun User.toEntity(): UserEntity {
         email = this.email,
         phoneNumber = this.phoneNumber,
         avatarUrl = this.avatarUrl,
+        // [SỬA]: Lấy địa chỉ từ Entity thay vì để null
+        address = this.address,
         role = this.role
     )
 }

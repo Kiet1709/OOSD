@@ -18,4 +18,11 @@ interface IUserRepository {
     suspend fun saveUserInfo(user: User): Resource<Boolean>
 
 
+
+    // 5. [THÊM MỚI - QUAN TRỌNG]: Hàm lấy User 1 lần (Có hỗ trợ Offline)
+    suspend fun getUser(uid: String): Resource<User>
+
+
+    suspend fun updateProfile(uid: String, name: String, phone: String, address: String): Resource<Boolean>
+    suspend fun getUserById(userId: String): User?
 }

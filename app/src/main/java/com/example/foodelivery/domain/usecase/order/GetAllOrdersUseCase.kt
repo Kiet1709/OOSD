@@ -7,7 +7,14 @@ import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
 class GetAllOrdersUseCase @Inject constructor(
-    private val repository: IOrderRepository
+    private val orderRepository: IOrderRepository
 ) {
-    operator fun invoke(): Flow<Resource<List<Order>>> = repository.getAllOrders()
+
+    /**
+     * Lấy tất cả đơn hàng (Real-time Flow)
+     * Admin sẽ nhìn thấy updates tức thì từ Firebase
+     */
+    operator fun invoke(): Flow<Resource<List<Order>>> {
+        return orderRepository.getAllOrders()
+    }
 }

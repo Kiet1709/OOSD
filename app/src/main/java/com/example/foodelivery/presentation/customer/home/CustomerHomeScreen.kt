@@ -14,7 +14,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -38,27 +37,30 @@ fun CustomerHomeScreen(
     val context = LocalContext.current
     var searchText by remember { mutableStateOf("") }
 
-    // Xử lý sự kiện (Navigation, Toast...)
     LaunchedEffect(Unit) {
         viewModel.effect.collect { effect ->
             when(effect) {
                 is CustomerHomeEffect.NavigateToFoodDetail ->
                     navController.navigate(Route.CustomerFoodDetail.createRoute(effect.foodId))
+                // ✅ THÊM: Navigate to Category
+                is CustomerHomeEffect.NavigateToCategory ->
+                    navController.navigate(Route.CustomerFoodList.createRoute(effect.categoryId))
 
-                CustomerHomeEffect.NavigateToCart ->
-                    navController.navigate(Route.CustomerCart.path)
+                // ✅ THÊM: Navigate to FoodList (Popular/Recommended)
+                is CustomerHomeEffect.NavigateToFoodList ->
+                    navController.navigate(Route.CustomerFoodList.createRoute(effect.type))
+                CustomerHomeEffect.NavigateToCart -> navController.navigate(Route.CustomerCart.path)
+                CustomerHomeEffect.NavigateToProfile -> navController.navigate(Route.CustomerProfile.path)
+                CustomerHomeEffect.NavigateToLogin -> navController.navigate(Route.Login.path) {
+                    popUpTo(0) { inclusive = true }
+                }
+                is CustomerHomeEffect.NavigateToTracking -> {
+                    navController.navigate(Route.CustomerTracking.createRoute(effect.orderId))
+                }
 
-                CustomerHomeEffect.NavigateToProfile ->
-                    navController.navigate(Route.CustomerProfile.path)
-
-                CustomerHomeEffect.NavigateToLogin ->
-                    navController.navigate(Route.Login.path) {
-                        popUpTo(0) { inclusive = true } // Logout xóa stack
-                    }
-
-                is CustomerHomeEffect.ShowToast ->
-                    Toast.makeText(context, effect.msg, Toast.LENGTH_SHORT).show()
+                is CustomerHomeEffect.ShowToast -> Toast.makeText(context, effect.msg, Toast.LENGTH_SHORT).show()
                 else -> {}
+
             }
         }
     }
@@ -66,43 +68,33 @@ fun CustomerHomeScreen(
     Scaffold(
         containerColor = Color(0xFFF9F9F9),
         topBar = {
-            // Header: Đã cập nhật đủ 4 hành động
+            // [SỬA]: Truyền state.user vào Header
             HomeHeader(
-                userName = state.userName,
-                avatarUrl = state.avatarUrl,
+                user = state.user, // Dùng object user
                 modifier = Modifier.background(Color.White),
-
-                // 1. Click Giỏ hàng
                 onCartClick = { viewModel.setEvent(CustomerHomeIntent.ClickCart) },
-
-                // 2. Click Profile (trong Menu)
                 onProfileClick = { viewModel.setEvent(CustomerHomeIntent.ClickProfile) },
-
-                // 3. Click Settings (trong Menu)
+                // [THÊM MỚI]: Truyền sự kiện xuống ViewModel
+                onOrderClick = { viewModel.setEvent(CustomerHomeIntent.ClickCurrentOrder) },
                 onSettingsClick = { viewModel.setEvent(CustomerHomeIntent.ClickSettings) },
-
-                // 4. Click Logout (trong Menu)
                 onLogoutClick = { viewModel.setEvent(CustomerHomeIntent.ClickLogout) }
             )
         }
-    )
-    { padding ->
+    ) { padding ->
         if (state.isLoading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = PrimaryColor)
             }
         } else {
             LazyColumn(
-                modifier = Modifier
-                    .padding(padding)
-                    .fillMaxSize(),
+                modifier = Modifier.padding(padding).fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 24.dp)
             ) {
                 // 1. Search Bar
                 item {
                     HomeSearchBar(
                         text = searchText,
-                        onTextChange = { newText -> searchText = newText },
+                        onTextChange = { searchText = it },
                         onSearchClicked = { viewModel.setEvent(CustomerHomeIntent.ClickSearch) }
                     )
                 }
@@ -121,8 +113,9 @@ fun CustomerHomeScreen(
                     HomeFoodSection(
                         title = "Món Ngon Nổi Bật",
                         foods = state.popularFoods,
-                        onFoodClick = { viewModel.setEvent(CustomerHomeIntent.ClickFood(it)) }
-
+                        onFoodClick = { viewModel.setEvent(CustomerHomeIntent.ClickFood(it)) },
+                        // ✅ THÊM callback cho "Xem tất cả"
+                        onViewAllClick = { viewModel.setEvent(CustomerHomeIntent.ClickViewAllPopular) }
                     )
                 }
 
@@ -132,7 +125,9 @@ fun CustomerHomeScreen(
                     HomeFoodSection(
                         title = "Gợi Ý Cho Bạn",
                         foods = state.recommendedFoods,
-                        onFoodClick = { viewModel.setEvent(CustomerHomeIntent.ClickFood(it)) }
+                        onFoodClick = { viewModel.setEvent(CustomerHomeIntent.ClickFood(it)) },
+                        // ✅ THÊM callback cho "Xem tất cả"
+                        onViewAllClick = { viewModel.setEvent(CustomerHomeIntent.ClickViewAllRecommended) }
                     )
                 }
             }
@@ -140,13 +135,9 @@ fun CustomerHomeScreen(
     }
 }
 
-// --- Local Components (Search & Category) ---
+// --- Local Components (Giữ nguyên) ---
 @Composable
-fun HomeSearchBar(
-    text: String,
-    onTextChange: (String) -> Unit,
-    onSearchClicked: () -> Unit
-) {
+fun HomeSearchBar(text: String, onTextChange: (String) -> Unit, onSearchClicked: () -> Unit) {
     OutlinedTextField(
         value = text,
         onValueChange = onTextChange,
@@ -159,55 +150,25 @@ fun HomeSearchBar(
             focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent
         ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-            .clickable { onSearchClicked() }, // Cho phép click vào toàn bộ search bar
+        modifier = Modifier.fillMaxWidth().padding(16.dp).clickable { onSearchClicked() },
         singleLine = true
     )
 }
 
 @Composable
-fun CategorySection(
-    categories: List<CategoryUiModel>,
-    onClick: (String) -> Unit
-) {
+fun CategorySection(categories: List<CategoryUiModel>, onClick: (String) -> Unit) {
     Column {
-        Text(
-            text = "Danh Mục",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        )
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        Text("Danh Mục", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             items(categories) { category ->
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.clickable { onClick(category.id) }
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = Color.White,
-                        shadowElevation = 2.dp,
-                        modifier = Modifier.size(60.dp)
-                    ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onClick(category.id) }) {
+                    Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 2.dp, modifier = Modifier.size(60.dp)) {
                         Box(contentAlignment = Alignment.Center) {
-                            AsyncImage(
-                                model = category.iconUrl,
-                                contentDescription = null,
-                                modifier = Modifier.size(32.dp)
-                            )
+                            AsyncImage(model = category.iconUrl, contentDescription = null, modifier = Modifier.size(32.dp))
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = category.name,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Text(text = category.name, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium)
                 }
             }
         }

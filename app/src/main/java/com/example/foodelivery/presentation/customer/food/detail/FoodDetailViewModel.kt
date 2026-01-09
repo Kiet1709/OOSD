@@ -1,5 +1,6 @@
 package com.example.foodelivery.presentation.customer.food.detail
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.example.foodelivery.core.base.BaseViewModel
 import com.example.foodelivery.core.common.Resource
@@ -7,7 +8,7 @@ import com.example.foodelivery.domain.model.CartItem
 import com.example.foodelivery.domain.repository.ICartRepository
 import com.example.foodelivery.domain.repository.IFoodRepository
 import com.example.foodelivery.presentation.customer.food.detail.Contract.*
-import com.example.foodelivery.presentation.customer.home.contract.FoodUiModel
+// [ĐÃ XÓA IMPORT FoodUiModel]
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -15,8 +16,14 @@ import javax.inject.Inject
 @HiltViewModel
 class FoodDetailViewModel @Inject constructor(
     private val foodRepository: IFoodRepository,
-    private val cartRepository: ICartRepository
+    private val cartRepository: ICartRepository,
+    savedStateHandle: SavedStateHandle
 ) : BaseViewModel<FoodDetailState, FoodDetailIntent, FoodDetailEffect>(FoodDetailState()) {
+
+    // Lấy ID từ navigation args (nếu cần)
+    init {
+        savedStateHandle.get<String>("foodId")?.let { loadFoodDetail(it) }
+    }
 
     fun setEvent(intent: FoodDetailIntent) = handleIntent(intent)
 
@@ -36,8 +43,14 @@ class FoodDetailViewModel @Inject constructor(
             when(val result = foodRepository.getFoodDetail(id)) {
                 is Resource.Success -> {
                     val data = result.data ?: return@launch
-                    val uiFood = FoodUiModel(data.id, data.name, data.imageUrl, data.price, 4.8, "20 min")
-                    setState { copy(isLoading = false, food = uiFood, totalPrice = uiFood.price * quantity) }
+                    // [SỬA]: Gán trực tiếp Food, không cần tạo FoodUiModel
+                    setState {
+                        copy(
+                            isLoading = false,
+                            food = data,
+                            totalPrice = data.price * quantity
+                        )
+                    }
                 }
                 is Resource.Error -> setEffect { FoodDetailEffect.ShowToast(result.message ?: "Lỗi") }
                 else -> {}
@@ -52,10 +65,29 @@ class FoodDetailViewModel @Inject constructor(
 
     private fun addToCart() {
         val food = currentState.food ?: return
+
         viewModelScope.launch {
-            cartRepository.addToCart(CartItem(food.id, food.name, food.price, currentState.quantity, food.imageUrl, ""))
-            setEffect { FoodDetailEffect.ShowToast("Đã thêm vào giỏ hàng!") }
-            setEffect { FoodDetailEffect.NavigateToCart }
+            try {
+                android.util.Log.d("FoodDetailVM", "🛒 Adding to cart: ${food.name}")
+
+                cartRepository.addToCart(
+                    CartItem(
+                        foodId = food.id,
+                        name = food.name,
+                        price = food.price,
+                        quantity = currentState.quantity,
+                        imageUrl = food.imageUrl,
+                        note = ""
+                    )
+                )
+
+                android.util.Log.d("FoodDetailVM", "✅ Added to cart successfully")
+                setEffect { FoodDetailEffect.ShowToast("Đã thêm vào giỏ hàng!") }
+                setEffect { FoodDetailEffect.NavigateToCart }
+            } catch (e: Exception) {
+                android.util.Log.e("FoodDetailVM", "❌ Error adding to cart: ${e.message}")
+                setEffect { FoodDetailEffect.ShowToast("Lỗi thêm vào giỏ: ${e.message}") }
+            }
         }
     }
 }

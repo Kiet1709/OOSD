@@ -12,4 +12,5 @@ interface IOrderRepository {
     suspend fun cancelOrder(orderId: String): Resource<Boolean>
 
     fun getAllOrders(): Flow<Resource<List<Order>>>
+    suspend fun getOrderById(orderId: String): Order?
 }

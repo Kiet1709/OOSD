@@ -11,7 +11,6 @@ data class CartItemUiModel(
     val quantity: Int,
     val note: String = ""
 ) {
-    // Helper: Tính tổng tiền của riêng món này
     val itemTotal: Double get() = price * quantity
 }
 
@@ -24,7 +23,7 @@ data class CartState(
     val subTotal: Double = 0.0,        // Tổng tiền hàng
     val deliveryFee: Double = 15000.0, // Phí ship (Có thể lấy từ config sau này)
     val discountAmount: Double = 0.0,  // Giảm giá
-
+    val address: String = "",
     // finalTotal sẽ được tính toán tự động trong ViewModel dựa trên 3 biến trên
     val finalTotal: Double = 0.0
 ) : ViewState {

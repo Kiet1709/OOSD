@@ -2,9 +2,7 @@ package com.example.foodelivery.presentation.customer.profile
 
 import androidx.lifecycle.viewModelScope
 import com.example.foodelivery.core.base.BaseViewModel
-import com.example.foodelivery.domain.model.User
-import com.example.foodelivery.domain.usecase.profile.GetUserProfileUseCase
-import com.example.foodelivery.domain.usecase.profile.LogoutUseCase
+import com.example.foodelivery.domain.repository.IUserRepository
 import com.example.foodelivery.presentation.customer.profile.contract.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.collectLatest
@@ -13,12 +11,11 @@ import javax.inject.Inject
 
 @HiltViewModel
 class CustomerProfileViewModel @Inject constructor(
-    private val getUserProfileUseCase: GetUserProfileUseCase,
-    private val logoutUseCase: LogoutUseCase
+    private val userRepository: IUserRepository // Dùng Repository trực tiếp
 ) : BaseViewModel<ProfileState, ProfileIntent, ProfileEffect>(ProfileState()) {
 
     init {
-        loadUserProfile()
+        handleIntent(ProfileIntent.LoadProfile)
     }
 
     fun setEvent(intent: ProfileIntent) = handleIntent(intent)
@@ -27,51 +24,36 @@ class CustomerProfileViewModel @Inject constructor(
         when(intent) {
             ProfileIntent.LoadProfile -> loadUserProfile()
 
-            // Xử lý Navigation (Điều hướng)
+            // Navigation Events
+            ProfileIntent.ClickBack -> setEffect { ProfileEffect.NavigateBack }
             ProfileIntent.ClickEditProfile -> setEffect { ProfileEffect.NavigateToEditProfile }
-            ProfileIntent.ClickAddress -> setEffect { ProfileEffect.NavigateToAddressList }
-            ProfileIntent.ClickOrderHistory -> setEffect { ProfileEffect.NavigateToOrderHistory }
 
-            // Các tính năng chưa phát triển -> Show Toast thông báo
-            ProfileIntent.ClickPaymentMethods -> setEffect { ProfileEffect.ShowToast("Tính năng Phương thức thanh toán đang phát triển") }
-            ProfileIntent.ClickSupport -> setEffect { ProfileEffect.ShowToast("Tính năng Hỗ trợ đang phát triển") }
+            // Logout
+            ProfileIntent.ClickLogout -> logout()
 
-            ProfileIntent.ClickLogout -> performLogout()
+            // Các tính năng đang phát triển -> Toast
+            ProfileIntent.ClickAddress,
+            ProfileIntent.ClickOrderHistory,
+            ProfileIntent.ClickPaymentMethods,
+            ProfileIntent.ClickSupport -> setEffect { ProfileEffect.ShowToast("Tính năng đang phát triển") }
         }
     }
 
     private fun loadUserProfile() {
         viewModelScope.launch {
             setState { copy(isLoading = true) }
-            getUserProfileUseCase().collectLatest { user ->
-                setState {
-                    copy(
-                        isLoading = false,
-                        user = user?.toUiModel() // Mapping Domain -> UI
-                    )
-                }
+            // Lấy User và gán thẳng vào State
+            userRepository.getUser().collectLatest { user ->
+                setState { copy(isLoading = false, user = user) }
             }
         }
     }
 
-    private fun performLogout() {
+    private fun logout() {
         viewModelScope.launch {
-            logoutUseCase()
+            userRepository.logout()
+            setEffect { ProfileEffect.ShowToast("Đã đăng xuất") }
             setEffect { ProfileEffect.NavigateToLogin }
         }
     }
-}
-
-// Extension: Chuyển đổi từ Domain User -> UI Model
-private fun User.toUiModel(): UserProfileUiModel {
-    return UserProfileUiModel(
-        id = this.id,
-        name = this.name,
-        email = this.email,
-        phone = this.phoneNumber,
-        avatarUrl = this.avatarUrl,
-        // Các trường này User.kt không có, ta giả lập hoặc tính toán tại đây
-        membershipLevel = "Thành viên Vàng",
-        loyaltyPoints = 1250
-    )
 }

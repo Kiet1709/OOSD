@@ -4,8 +4,9 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,27 +22,32 @@ import androidx.navigation.NavController
 import com.example.foodelivery.presentation.driver.delivery.components.DeliveryBottomSheet
 import com.example.foodelivery.presentation.driver.delivery.components.DriverMapSection
 import com.example.foodelivery.presentation.driver.delivery.contract.*
-import com.example.foodelivery.ui.theme.PrimaryColor
+import com.example.foodelivery.ui.theme.PrimaryColor // Đảm bảo bạn có file theme màu
 
 @Composable
 fun DriverDeliveryScreen(
     navController: NavController,
-    orderId: String = "DELIVERY-001", // Nhận từ tham số điều hướng
+    orderId: String,
     viewModel: DriverDeliveryViewModel = hiltViewModel()
 ) {
+    // 1. Lắng nghe State từ ViewModel
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // Init Data
+    // 2. Gửi Intent: Load đơn hàng khi màn hình mở
     LaunchedEffect(orderId) {
-        viewModel.setEvent(DeliveryIntent.LoadOrder(orderId))
+        if (orderId.isNotBlank()) {
+            viewModel.setEvent(DeliveryIntent.LoadOrder(orderId))
+        }
     }
 
-    // Handle Side Effects
+    // 3. Xử lý Side Effects (Chuyển màn hình, Gọi điện, Toast)
     LaunchedEffect(Unit) {
         viewModel.effect.collect { effect ->
             when(effect) {
-                is DeliveryEffect.NavigateBackDashboard -> navController.popBackStack()
+                is DeliveryEffect.NavigateBackDashboard -> {
+                    navController.popBackStack()
+                }
                 is DeliveryEffect.OpenDialer -> {
                     val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${effect.phone}"))
                     context.startActivity(intent)
@@ -53,13 +59,16 @@ fun DriverDeliveryScreen(
         }
     }
 
+    // 4. Giao diện chính (Dùng Box để xếp chồng các lớp)
     Box(modifier = Modifier.fillMaxSize()) {
-        // 1. LỚP BẢN ĐỒ (Nằm dưới cùng)
+
+        // Lớp 1: Bản đồ nền (Map)
         DriverMapSection(
-            progress = state.mapProgress
+            progress = state.mapProgress,
+            modifier = Modifier.fillMaxSize()
         )
 
-        // 2. LỚP TOP BAR (Nút Back)
+        // Lớp 2: Nút Back (Góc trên trái)
         SmallFloatingActionButton(
             onClick = { navController.popBackStack() },
             modifier = Modifier
@@ -69,23 +78,29 @@ fun DriverDeliveryScreen(
             containerColor = Color.White,
             contentColor = Color.Black
         ) {
-            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
         }
 
-        // 3. LỚP THÔNG TIN (BottomSheet nằm đè lên dưới cùng)
+        // Lớp 3: Loading hoặc BottomSheet
         if (state.isLoading) {
-            Box(Modifier.align(Alignment.Center)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.3f)),
+                contentAlignment = Alignment.Center
+            ) {
                 CircularProgressIndicator(color = PrimaryColor)
             }
         } else {
-            state.order?.let { order ->
+            // Chỉ hiển thị BottomSheet khi đã có dữ liệu Order
+            state.order?.let { orderInfo ->
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
                 ) {
                     DeliveryBottomSheet(
-                        order = order,
+                        order = orderInfo,
                         currentStep = state.currentStep,
                         onMainAction = { viewModel.setEvent(DeliveryIntent.ClickMainAction) },
                         onCall = { viewModel.setEvent(DeliveryIntent.ClickCallCustomer) },

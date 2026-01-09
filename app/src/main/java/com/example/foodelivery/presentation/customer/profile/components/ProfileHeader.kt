@@ -1,11 +1,8 @@
 package com.example.foodelivery.presentation.customer.profile.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
@@ -15,67 +12,64 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.example.foodelivery.presentation.customer.profile.contract.UserProfileUiModel
+import com.example.foodelivery.domain.model.User // Import User từ Domain
+import com.example.foodelivery.ui.theme.PrimaryColor
 
 @Composable
 fun ProfileHeader(
-    user: UserProfileUiModel,
+    user: User?, // [SỬA]: Nhận tham số là User
     onEditClick: () -> Unit
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .background(Color.White)
+            .padding(vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // 1. Avatar
-        AsyncImage(
-            model = user.avatarUrl ?: "https://ui-avatars.com/api/?name=${user.name}&background=random",
-            contentDescription = null,
-            modifier = Modifier
-                .size(80.dp)
-                .clip(CircleShape)
-                .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
-            contentScale = ContentScale.Crop
-        )
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        // 2. Info
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = user.name,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+        Box {
+            // Avatar
+            AsyncImage(
+                model = user?.avatarUrl?.ifBlank { "https://i.pravatar.cc/150" } ?: "https://i.pravatar.cc/150",
+                contentDescription = null,
+                modifier = Modifier
+                    .size(100.dp)
+                    .clip(CircleShape)
+                    .background(Color.LightGray),
+                contentScale = ContentScale.Crop
             )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = user.phone,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Badge Hạng thành viên
-            Surface(
-                color = MaterialTheme.colorScheme.primaryContainer,
-                shape = RoundedCornerShape(8.dp)
+            // Edit Icon
+            IconButton(
+                onClick = onEditClick,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 4.dp, y = 4.dp)
+                    .background(PrimaryColor, CircleShape)
+                    .size(32.dp)
             ) {
-                Text(
-                    text = "${user.membershipLevel} • ${user.loyaltyPoints} điểm",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Edit",
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
                 )
             }
         }
 
-        // 3. Edit Icon
-        IconButton(onClick = onEditClick) {
-            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
-        }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Tên & Email
+        Text(
+            text = user?.name ?: "Khách hàng",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+        )
+        Text(
+            text = user?.email ?: "Chưa cập nhật email",
+            color = Color.Gray,
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }

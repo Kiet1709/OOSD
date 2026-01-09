@@ -7,11 +7,11 @@ data class User(
     val phoneNumber: String = "",
     val avatarUrl: String = "",
     val address: String? = null,
-    val role: String = "customer" // [FIX]: Thêm mặc định
+    val role: String = "CUSTOMER" // [FIX]: Thêm mặc định
 ) {
     // Constructor rỗng (Bắt buộc phải có để Firestore chạy được)
     constructor() : this("", "", "", "", "", null, "customer")
 
-    fun isDriver() = role == "driver"
-    fun isAdmin() = role == "admin"
+    fun isDriver() = role.equals("DRIVER", ignoreCase = true)  // ✅ Thêm ignoreCase
+    fun isAdmin() = role.equals("ADMIN", ignoreCase = true)    // ✅ Thêm ignoreCase
 }

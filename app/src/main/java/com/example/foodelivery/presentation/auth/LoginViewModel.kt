@@ -68,14 +68,20 @@ class LoginViewModel @Inject constructor(
             // Gọi UseCase Login
             val result = loginUseCase(email, pass)
 
+
             _state.update { it.copy(isLoading = false) }
 
             when (result) {
                 is Resource.Success -> {
                     // Login thành công -> Check Role để điều hướng
-                    val role = checkUserRoleUseCase() // Lấy role từ UseCase
+                    val role = checkUserRoleUseCase.invoke() // Lấy role từ UseCase
+                    android.util.Log.e("DEBUG_LOGIN", "=== LOGIN SUCCESS ===")
+                    android.util.Log.e("DEBUG_LOGIN", "Role lấy về: '$role'")
+                    android.util.Log.e("DEBUG_LOGIN", "Role lowercase: '${role.lowercase()}'")
+                    android.util.Log.e("DEBUG_LOGIN", "So sánh với 'admin': ${role.lowercase() == "admin"}")
                     navigateByRole(role)
                 }
+                
                 is Resource.Error -> {
                     val errorMsg = result.message ?: "Đăng nhập thất bại"
                     sendEffect(LoginEffect.ShowToast(errorMsg))
@@ -86,9 +92,11 @@ class LoginViewModel @Inject constructor(
     }
 
     private fun navigateByRole(role: String) {
-        when (role) {
-            "ADMIN" -> sendEffect(LoginEffect.Navigation.ToAdminDashboard)
-            "DRIVER" -> sendEffect(LoginEffect.Navigation.ToDriverDashboard)
+        android.util.Log.e("DEBUG_LOGIN", "Đang xử lý navigation với role: '$role' (lowercase: '${role.lowercase()}')")
+
+        when (role.lowercase()) {
+            "admin" -> sendEffect(LoginEffect.Navigation.ToAdminDashboard)
+            "driver" -> sendEffect(LoginEffect.Navigation.ToDriverDashboard)
             else -> sendEffect(LoginEffect.Navigation.ToCustomerHome) // CUSTOMER
         }
     }

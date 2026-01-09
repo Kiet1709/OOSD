@@ -4,7 +4,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.foodelivery.core.base.BaseViewModel
 import com.example.foodelivery.domain.repository.IFoodRepository
 import com.example.foodelivery.presentation.customer.food.list.contract.*
-import com.example.foodelivery.presentation.customer.home.contract.FoodUiModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -39,22 +38,11 @@ class FoodListViewModel @Inject constructor(
                 }
 
                 // Gọi Repository lấy dữ liệu thật
+
                 val result = foodRepository.getFoodsByType(type)
 
-                // Map Domain -> UI Model
-                val uiFoods = result.map { food ->
-                    FoodUiModel(
-                        id = food.id,
-                        name = food.name,
-                        imageUrl = food.imageUrl,
-                        price = food.price,
-                        rating = 4.5, // Có thể update sau nếu API trả về rating
-                        time = "20 min"
-                    )
-                }
-
                 setState {
-                    copy(isLoading = false, title = title, foods = uiFoods)
+                    copy(isLoading = false, title = title, foods = result)
                 }
             } catch (e: Exception) {
                 setState { copy(isLoading = false) }

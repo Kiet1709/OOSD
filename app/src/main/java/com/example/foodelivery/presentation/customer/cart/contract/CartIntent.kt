@@ -13,4 +13,6 @@ sealed class CartIntent : ViewIntent {
 
     object ClickCheckout : CartIntent()
     object ClickGoHome : CartIntent() // Dùng khi giỏ rỗng muốn quay về home mua tiếp
+    // [THÊM MỚI]: Intent cập nhật địa chỉ
+    data class UpdateAddress(val address: String) : CartIntent()
 }

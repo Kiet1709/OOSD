@@ -13,7 +13,7 @@ firebaseDatabase = "22.0.1"
 
 # --- DEPENDENCY INJECTION ---
 hilt = "2.51.1"
-
+ksp = "2.0.21-1.0.28"
 # --- FIREBASE BOM (Quản lý version chuẩn) ---
 firebaseBom = "33.1.2"
 
@@ -93,6 +93,10 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "googleGmsGoogleServices" }
 
 hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+
+
+# [THÊM 2 DÒNG NÀY]
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 
 
 

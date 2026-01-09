@@ -14,4 +14,8 @@ sealed class CustomerHomeIntent : ViewIntent {
     object ClickProfile : CustomerHomeIntent() // Bấm vào Avatar
     object ClickSettings : CustomerHomeIntent()
     object ClickLogout : CustomerHomeIntent()
+
+    object ClickViewAllPopular : CustomerHomeIntent()
+    object ClickViewAllRecommended : CustomerHomeIntent()
+    object ClickCurrentOrder : CustomerHomeIntent() // [THÊM MỚI]: Sự kiện click menu Đơn hàng
 }

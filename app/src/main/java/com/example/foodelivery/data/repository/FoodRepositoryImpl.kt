@@ -1,4 +1,5 @@
 package com.example.foodelivery.data.repository
+
 import com.example.foodelivery.core.common.Resource
 import com.example.foodelivery.data.local.FoodDatabase
 import com.example.foodelivery.data.local.entity.FoodEntity
@@ -16,95 +17,245 @@ class FoodRepositoryImpl @Inject constructor(
     private val db: FoodDatabase,
     private val firestore: FirebaseFirestore
 ) : IFoodRepository {
+
     private val dao = db.foodDao()
+
+    // ✅ LẤY MENU (REALTIME)
     override fun getMenu(): Flow<Resource<List<Food>>> = channelFlow {
         send(Resource.Loading())
 
-        // 1. Luôn theo dõi Room (Offline-first)
+        // 1. Theo dõi Room (Offline-first)
         val localJob = launch {
             dao.getAllFoods().collect { entities ->
                 send(Resource.Success(entities.map { it.toDomain() }))
             }
         }
+
         try {
-            // 2. Lấy từ Firebase - Dùng trường 'available' khớp với ảnh Firestore của bạn
+            // 2. Lấy từ Firebase - ✅ SỬA: Dùng isAvailable thay vì available
             val snap = firestore.collection("foods")
-                .whereEqualTo("available", true)
+                .whereEqualTo("isAvailable", true)
                 .get()
                 .await()
-            // 3. Ép gán Document ID thủ công để đảm bảo không bị rỗng
+
+            // 3. Parse dữ liệu
             val entities = snap.documents.mapNotNull { doc ->
-                val dto = doc.toObject(FoodDto::class.java)
-                // Gán doc.id (ví dụ: 4P6Boepp...) vào DTO
-                dto?.let {
-                    FoodEntity(
-                        id = doc.id, // Lấy Document ID (vd: 4P6Bo...) làm khóa chính
-                        name = it.name ?: "",
-                        description = it.description ?: "",
-                        price = it.price ?: 0.0,
-                        imageUrl = it.imageUrl ?: "",
-                        categoryId = it.categoryId ?: "",
-                        rating = it.rating ?: 0.0,
-                        isAvailable = it.isAvailable ?: true
-                    )
+                try {
+                    val dto = doc.toObject(FoodDto::class.java)
+                    dto?.let {
+                        FoodEntity(
+                            id = doc.id,
+                            name = it.name ?: "",
+                            description = it.description ?: "",
+                            price = it.price ?: 0.0,
+                            imageUrl = it.imageUrl ?: "",
+                            categoryId = it.categoryId ?: "",
+                            rating = it.rating ?: 0.0,
+                            isAvailable = it.isAvailable ?: true
+                        )
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("FoodRepo", "Parse error: ${e.message}")
+                    null
                 }
             }
+
             // 4. Cập nhật SQLite
             dao.refreshFoods(entities)
+            android.util.Log.d("FoodRepo", "✅ Loaded ${entities.size} foods from Firebase")
         } catch (e: Exception) {
             e.printStackTrace()
-            send(Resource.Error(e.message ?: "Lỗi kết nối "))
+            android.util.Log.e("FoodRepo", "❌ Error: ${e.message}")
+            send(Resource.Error(e.message ?: "Lỗi kết nối"))
         }
     }
+
+    // ✅ LẤY CHI TIẾT MÓN
+    override suspend fun getFoodDetail(id: String): Resource<Food> {
+        // 1. Thử local trước
+        val local = dao.getFoodById(id)
+        if (local != null) {
+            android.util.Log.d("FoodRepo", "✅ Food found in local: ${local.name}")
+            return Resource.Success(local.toDomain())
+        }
+
+        // 2. Lấy từ Firebase
+        return try {
+            val snap = firestore.collection("foods")
+                .document(id)
+                .get()
+                .await()
+
+            val dto = snap.toObject(FoodDto::class.java)
+                ?: throw Exception("Không tìm thấy món ăn")
+
+            // Lưu vào local
+            val entity = FoodEntity(
+                id = snap.id,
+                name = dto.name ?: "",
+                description = dto.description ?: "",
+                price = dto.price ?: 0.0,
+                imageUrl = dto.imageUrl ?: "",
+                categoryId = dto.categoryId ?: "",
+                rating = dto.rating ?: 0.0,
+                isAvailable = dto.isAvailable ?: true
+            )
+            dao.insertFood(entity)
+
+            android.util.Log.d("FoodRepo", "✅ Food loaded from Firebase: ${entity.name}")
+            Resource.Success(entity.toDomain())
+        } catch (e: Exception) {
+            android.util.Log.e("FoodRepo", "❌ Error: ${e.message}")
+            Resource.Error(e.message ?: "Lỗi tải chi tiết")
+        }
+    }
+
+    // ✅ LẤY MÓN THEO TYPE
+    override suspend fun getFoodsByType(type: String): List<Food> {
+        return try {
+            when (type) {
+                "popular" -> {
+                    dao.getAllFoods().first()
+                        .sortedByDescending { it.rating }
+                        .take(10)
+                        .map { it.toDomain() }
+                }
+                "recommended" -> {
+                    dao.getAllFoods().first()
+                        .shuffled()
+                        .take(10)
+                        .map { it.toDomain() }
+                }
+                else -> {
+                    // Type là categoryId
+                    getFoodsByCategory(type)
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("FoodRepo", "❌ Error getFoodsByType: ${e.message}")
+            emptyList()
+        }
+    }
+
+    // ✅ LẤY MÓN THEO CATEGORY
+    override suspend fun getFoodsByCategory(categoryId: String): List<Food> {
+        return try {
+            // 1. Thử local trước
+            val localFoods = dao.getAllFoods().first()
+                .filter { it.categoryId == categoryId }
+                .map { it.toDomain() }
+
+            if (localFoods.isNotEmpty()) {
+                android.util.Log.d("FoodRepo", "✅ Found ${localFoods.size} foods in category $categoryId (local)")
+                return localFoods
+            }
+
+            // 2. Lấy từ Firebase
+            val snap = firestore.collection("foods")
+                .whereEqualTo("categoryId", categoryId)
+                .whereEqualTo("isAvailable", true)
+                .get()
+                .await()
+
+            val foods = snap.documents.mapNotNull { doc ->
+                try {
+                    val dto = doc.toObject(FoodDto::class.java)
+                    dto?.let {
+                        FoodEntity(
+                            id = doc.id,
+                            name = it.name ?: "",
+                            description = it.description ?: "",
+                            price = it.price ?: 0.0,
+                            imageUrl = it.imageUrl ?: "",
+                            categoryId = it.categoryId ?: "",
+                            rating = it.rating ?: 0.0,
+                            isAvailable = it.isAvailable ?: true
+                        ).toDomain()
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("FoodRepo", "Parse error: ${e.message}")
+                    null
+                }
+            }
+
+            android.util.Log.d("FoodRepo", "✅ Found ${foods.size} foods in category $categoryId (Firebase)")
+            foods
+        } catch (e: Exception) {
+            android.util.Log.e("FoodRepo", "❌ Error: ${e.message}")
+            emptyList()
+        }
+    }
+
+    // ✅ THÊM MÓN (ADMIN)
     override suspend fun addFood(food: Food): Resource<Boolean> {
         return try {
             val dto = food.toDto()
-            val ref = if(dto.id.isEmpty()) firestore.collection("foods").document() else firestore.collection("foods").document(dto.id)
+            val ref = if (dto.id.isEmpty()) {
+                firestore.collection("foods").document()
+            } else {
+                firestore.collection("foods").document(dto.id)
+            }
+
             ref.set(dto.copy(id = ref.id)).await()
+            android.util.Log.d("FoodRepo", "✅ Added food: ${food.name}")
             Resource.Success(true)
-        } catch(e: Exception) { Resource.Error(e.message?:"Error") }
+        } catch (e: Exception) {
+            android.util.Log.e("FoodRepo", "❌ Error: ${e.message}")
+            Resource.Error(e.message ?: "Lỗi thêm món")
+        }
     }
-    override suspend fun getFoodDetail(id: String): Resource<Food> {
-        val local = dao.getFoodById(id)
-        if (local != null) return Resource.Success(local.toDomain())
-        return try {
-            val snap = firestore.collection("foods").document(id).get().await()
-            val dto = snap.toObject(FoodDto::class.java)?:throw Exception("Not Found")
-            Resource.Success(dto.toDomain())
-        } catch(e: Exception) { Resource.Error(e.message?:"Error") }
-    }
-    // [FIX 1]: Thêm hàm cập nhật món ăn
+
+    // ✅ CẬP NHẬT MÓN (ADMIN)
     override suspend fun updateFood(food: Food): Resource<Boolean> {
         return try {
-            // TODO: Gọi API update ở đây
-            // api.updateFood(food.id, food)
-            Resource.Success(true) // Trả về Success giả lập
+            val dto = food.toDto()
+            firestore.collection("foods")
+                .document(food.id)
+                .set(dto)
+                .await()
+
+            android.util.Log.d("FoodRepo", "✅ Updated food: ${food.name}")
+            Resource.Success(true)
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Lỗi cập nhật món")
+            android.util.Log.e("FoodRepo", "❌ Error: ${e.message}")
+            Resource.Error(e.message ?: "Lỗi cập nhật")
         }
     }
 
-    // [FIX 2]: Thêm hàm xóa món ăn
+    // ✅ XÓA MÓN (ADMIN)
     override suspend fun deleteFood(id: String): Resource<Boolean> {
         return try {
-            // TODO: Gọi API delete ở đây
-            // api.deleteFood(id)
+            firestore.collection("foods")
+                .document(id)
+                .delete()
+                .await()
+
+            android.util.Log.d("FoodRepo", "✅ Deleted food: $id")
             Resource.Success(true)
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Lỗi xóa món")
+            android.util.Log.e("FoodRepo", "❌ Error: ${e.message}")
+            Resource.Error(e.message ?: "Lỗi xóa")
         }
     }
 
-    // [FIX 3]: Thêm hàm cập nhật trạng thái (Còn món/Hết món)
+    // ✅ CẬP NHẬT TRẠNG THÁI
     override suspend fun updateFoodStatus(id: String, isAvailable: Boolean): Resource<Boolean> {
         return try {
-            // TODO: Gọi API update status ở đây
-            // api.updateStatus(id, isAvailable)
+            firestore.collection("foods")
+                .document(id)
+                .update("isAvailable", isAvailable)
+                .await()
+
+            android.util.Log.d("FoodRepo", "✅ Updated status: $id → $isAvailable")
             Resource.Success(true)
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Lỗi cập nhật trạng thái")
+            android.util.Log.e("FoodRepo", "❌ Error: ${e.message}")
+            Resource.Error(e.message ?: "Lỗi cập nhật")
         }
     }
-    override suspend fun searchFood(query: String): List<Food> = dao.searchFood(query).map { it.toDomain() }
-    override suspend fun getFoodsByType(type: String): List<Food> = dao.getFoodsByType(type).map { it.toDomain() }
+
+    // ✅ TÌM KIẾM
+    override suspend fun searchFood(query: String): List<Food> {
+        return dao.searchFood(query).map { it.toDomain() }
+    }
 }

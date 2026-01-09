@@ -65,6 +65,10 @@ sealed class Route(val path: String) {
     object DriverDelivery : Route("driver_delivery/{orderId}") {
         const val ARG_ORDER_ID = "orderId"
         fun createRoute(orderId: String) = "driver_delivery/$orderId"
-        val navArgs = listOf(navArgument(ARG_ORDER_ID) { type = NavType.StringType })
+        val navArgs: List<NamedNavArgument> = listOf(
+            navArgument(ARG_ORDER_ID) { type = NavType.StringType }
+        )
     }
+    object DriverProfile : Route("driver_profile")
+    object DriverEditProfile : Route("driver_edit_profile")
 }

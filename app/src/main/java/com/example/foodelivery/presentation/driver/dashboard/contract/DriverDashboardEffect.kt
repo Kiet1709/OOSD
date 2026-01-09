@@ -4,6 +4,8 @@ import com.example.foodelivery.core.base.ViewSideEffect
 
 sealed class DriverDashboardEffect : ViewSideEffect {
     data class NavigateToDelivery(val orderId: String) : DriverDashboardEffect() // Chuyển sang màn đi giao
-    object NavigateToRevenueReport : DriverDashboardEffect()
     data class ShowToast(val msg: String) : DriverDashboardEffect()
+    object NavigateToProfile : DriverDashboardEffect()
+    object NavigateToRevenueReport : DriverDashboardEffect()
+    object NavigateToLogin : DriverDashboardEffect()
 }
