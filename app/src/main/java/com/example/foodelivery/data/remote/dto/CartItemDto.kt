@@ -8,5 +8,6 @@ data class CartItemDto(
     val price: Double? = null,
     val quantity: Int? = null,
     val imageUrl: String? = null,
-    val note: String? = null
+    val note: String? = null,
+    val restaurantId: String? = null // Add this field
 )

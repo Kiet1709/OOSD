@@ -7,6 +7,8 @@ sealed class EditProfileIntent : ViewIntent {
     data class ChangeName(val value: String) : EditProfileIntent()
     data class ChangePhone(val value: String) : EditProfileIntent()
     data class ChangeAddress(val value: String) : EditProfileIntent()
+    data class ChangeAvatar(val value: String) : EditProfileIntent()
+    data class ChangeCoverPhoto(val value: String) : EditProfileIntent()
     object ClickSave : EditProfileIntent()
     object ClickBack : EditProfileIntent()
 }

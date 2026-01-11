@@ -23,6 +23,6 @@ interface IUserRepository {
     suspend fun getUser(uid: String): Resource<User>
 
 
-    suspend fun updateProfile(uid: String, name: String, phone: String, address: String): Resource<Boolean>
+    suspend fun updateProfile(uid: String, name: String, phone: String, address: String, avatarUrl: String?, coverPhotoUrl: String?): Resource<Boolean>
     suspend fun getUserById(userId: String): User?
 }

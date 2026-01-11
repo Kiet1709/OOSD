@@ -28,6 +28,7 @@ import com.example.foodelivery.presentation.customer.cart.components.CartBillSum
 import com.example.foodelivery.presentation.customer.cart.components.CartItemCard
 import com.example.foodelivery.presentation.customer.cart.contract.*
 import com.example.foodelivery.ui.theme.PrimaryColor
+import com.example.foodelivery.ui.theme.navigation.Route
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,11 +44,11 @@ fun CustomerCartScreen(
             when(effect) {
                 is CartEffect.ShowToast -> Toast.makeText(context, effect.msg, Toast.LENGTH_SHORT).show()
                 is CartEffect.NavigateToHome -> navController.popBackStack()
-
-                // [FIX LỖI CÚ PHÁP CŨ]: Xử lý chuyển sang Tracking
                 is CartEffect.NavigateToTracking -> {
-                    // Đảm bảo AppNavGraph đã có route: "tracking/{orderId}"
                     navController.navigate("customer_tracking/${effect.orderId}")
+                }
+                is CartEffect.NavigateToCheckout -> {
+                    navController.navigate(Route.Checkout.path) // Simplified navigation
                 }
             }
         }
@@ -84,7 +85,6 @@ fun CustomerCartScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // [THÊM MỚI]: Ô NHẬP ĐỊA CHỈ (Nằm trên cùng)
                 item {
                     AddressInputSection(
                         address = state.address,
@@ -92,7 +92,6 @@ fun CustomerCartScreen(
                     )
                 }
 
-                // Danh sách món ăn
                 items(state.items, key = { it.foodId }) { item ->
                     CartItemCard(
                         item = item,
@@ -102,19 +101,15 @@ fun CustomerCartScreen(
                     )
                 }
 
-                // Tổng hóa đơn
                 item {
                     CartBillSummary(state.subTotal, state.deliveryFee, state.discountAmount, state.finalTotal)
                 }
 
-                // Khoảng trắng dưới cùng để không bị che bởi BottomBar
                 item { Spacer(modifier = Modifier.height(16.dp)) }
             }
         }
     }
 }
-
-// --- CÁC COMPONENT CON ---
 
 @Composable
 fun AddressInputSection(address: String, onValueChange: (String) -> Unit) {

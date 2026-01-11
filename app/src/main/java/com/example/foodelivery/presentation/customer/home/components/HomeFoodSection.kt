@@ -27,9 +27,9 @@ import com.example.foodelivery.ui.theme.PrimaryColor
 fun HomeFoodSection(
     title: String,
     foods: List<Food>,
-    onFoodClick: (String) -> Unit,
-    onViewAllClick: () -> Unit, // ✅ THÊM callback này
-    modifier: Modifier = Modifier // [QUAN TRỌNG]: Phải có tham số này
+    onFoodClick: (Food) -> Unit, // Corrected to pass the whole Food object
+    onViewAllClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
         // Title Row
@@ -60,7 +60,7 @@ fun HomeFoodSection(
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(foods) { food ->
-                FoodCard(food = food, onClick = { onFoodClick(food.id) })
+                FoodCard(food = food, onClick = { onFoodClick(food) }) // Corrected to pass the whole Food object
             }
         }
     }

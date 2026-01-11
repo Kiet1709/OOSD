@@ -13,7 +13,7 @@ import com.example.foodelivery.data.local.entity.*
         CartEntity::class,
         OrderEntity::class
     ],
-    version = 2, // Nếu trước đó là 1 thì tăng lên 2, hoặc gỡ app cài lại
+    version = 6, // Incremented version to handle CartEntity schema change
     exportSchema = false
 )
 abstract class FoodDatabase : RoomDatabase() {

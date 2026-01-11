@@ -4,21 +4,19 @@ import com.example.foodelivery.data.local.entity.UserEntity
 import com.example.foodelivery.data.remote.dto.UserDto
 import com.example.foodelivery.domain.model.User
 
-// 1. Chuyển từ Entity (DB) -> Domain (App)
 fun UserEntity.toDomain(): User {
     return User(
         id = this.id,
         name = this.name ?: "",
         email = this.email ?: "",
         phoneNumber = this.phoneNumber ?: "",
-        role = this.role ?: "user",
-
+        role = this.role?.uppercase() ?: "CUSTOMER",
         avatarUrl = this.avatarUrl ?: "",
-// [SỬA]: Lấy địa chỉ từ Entity thay vì để null
-        address = this.address    )
+        coverPhotoUrl = this.coverPhotoUrl ?: "",
+        address = this.address
+    )
 }
 
-// 2. Chuyển từ DTO (API) -> Entity (DB)
 fun UserDto.toEntity(): UserEntity {
     return UserEntity(
         id = this.id,
@@ -26,13 +24,12 @@ fun UserDto.toEntity(): UserEntity {
         email = this.email ?: "",
         phoneNumber = this.phoneNumber,
         avatarUrl = this.avatarUrl,
-        // [SỬA]: Lấy địa chỉ từ Entity thay vì để null
+        coverPhotoUrl = this.coverPhotoUrl,
         address = this.address,
-        role = this.role ?: "customer"
+        role = this.role?.uppercase() ?: "CUSTOMER"
     )
 }
 
-// 3. Chuyển từ Domain (App) -> Entity (DB)
 fun User.toEntity(): UserEntity {
     return UserEntity(
         id = this.id,
@@ -40,8 +37,36 @@ fun User.toEntity(): UserEntity {
         email = this.email,
         phoneNumber = this.phoneNumber,
         avatarUrl = this.avatarUrl,
-        // [SỬA]: Lấy địa chỉ từ Entity thay vì để null
+        coverPhotoUrl = this.coverPhotoUrl,
+        address = this.address,
+        role = this.role.uppercase()
+    )
+}
+
+// Add the missing mappers
+
+fun User.toDto(): UserDto {
+    return UserDto(
+        id = this.id,
+        name = this.name,
+        email = this.email,
+        phoneNumber = this.phoneNumber,
+        avatarUrl = this.avatarUrl,
+        coverPhotoUrl = this.coverPhotoUrl,
         address = this.address,
         role = this.role
+    )
+}
+
+fun UserDto.toDomain(): User {
+    return User(
+        id = this.id,
+        name = this.name ?: "",
+        email = this.email ?: "",
+        phoneNumber = this.phoneNumber ?: "",
+        avatarUrl = this.avatarUrl ?: "",
+        coverPhotoUrl = this.coverPhotoUrl ?: "",
+        address = this.address,
+        role = this.role ?: "CUSTOMER"
     )
 }

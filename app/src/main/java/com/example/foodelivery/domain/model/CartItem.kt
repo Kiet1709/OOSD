@@ -6,7 +6,8 @@ data class CartItem(
     val price: Double,
     val quantity: Int,
     val imageUrl: String,
-    val note: String
+    val note: String,
+    val restaurantId: String // Add this field
 ) {
     val totalPrice: Double get() = price * quantity
 

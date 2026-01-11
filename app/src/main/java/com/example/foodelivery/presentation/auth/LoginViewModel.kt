@@ -3,7 +3,7 @@ package com.example.foodelivery.presentation.auth.login
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.foodelivery.core.common.Resource
-import com.example.foodelivery.domain.usecase.auth.CheckUserRoleUseCase
+import com.example.foodelivery.domain.model.User
 import com.example.foodelivery.domain.usecase.auth.LoginUseCase
 import com.example.foodelivery.presentation.auth.contract.LoginEffect
 import com.example.foodelivery.presentation.auth.contract.LoginIntent
@@ -16,19 +16,15 @@ import javax.inject.Inject
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val loginUseCase: LoginUseCase,
-    private val checkUserRoleUseCase: CheckUserRoleUseCase
+    private val loginUseCase: LoginUseCase
 ) : ViewModel() {
 
-    // 1. STATE MANAGEMENT
     private val _state = MutableStateFlow(LoginState())
     val state = _state.asStateFlow()
 
-    // 2. SIDE EFFECTS (Navigation, Toast)
     private val _effect = Channel<LoginEffect>()
     val effect = _effect.receiveAsFlow()
 
-    // 3. INTENT PROCESSING (Nhận hành động từ UI)
     fun processIntent(intent: LoginIntent) {
         when (intent) {
             is LoginIntent.EmailChanged -> {
@@ -47,12 +43,10 @@ class LoginViewModel @Inject constructor(
         }
     }
 
-    // 4. LOGIC NGHIỆP VỤ
     private fun login() {
         val email = state.value.email
         val pass = state.value.pass
 
-        // Validate cơ bản
         if (email.isBlank()) {
             _state.update { it.copy(emailError = "Email không được để trống") }
             return
@@ -64,40 +58,33 @@ class LoginViewModel @Inject constructor(
 
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
-
-            // Gọi UseCase Login
             val result = loginUseCase(email, pass)
-
-
             _state.update { it.copy(isLoading = false) }
 
             when (result) {
                 is Resource.Success -> {
-                    // Login thành công -> Check Role để điều hướng
-                    val role = checkUserRoleUseCase.invoke() // Lấy role từ UseCase
-                    android.util.Log.e("DEBUG_LOGIN", "=== LOGIN SUCCESS ===")
-                    android.util.Log.e("DEBUG_LOGIN", "Role lấy về: '$role'")
-                    android.util.Log.e("DEBUG_LOGIN", "Role lowercase: '${role.lowercase()}'")
-                    android.util.Log.e("DEBUG_LOGIN", "So sánh với 'admin': ${role.lowercase() == "admin"}")
-                    navigateByRole(role)
+                    val user = result.data
+                    if (user != null) {
+                        navigateByUser(user)
+                    } else {
+                        sendEffect(LoginEffect.ShowToast("Không thể lấy thông tin người dùng"))
+                    }
                 }
-                
                 is Resource.Error -> {
                     val errorMsg = result.message ?: "Đăng nhập thất bại"
                     sendEffect(LoginEffect.ShowToast(errorMsg))
                 }
-                is Resource.Loading -> { /* Đã handle loading state */ }
+                is Resource.Loading -> {}
             }
         }
     }
 
-    private fun navigateByRole(role: String) {
-        android.util.Log.e("DEBUG_LOGIN", "Đang xử lý navigation với role: '$role' (lowercase: '${role.lowercase()}')")
-
-        when (role.lowercase()) {
-            "admin" -> sendEffect(LoginEffect.Navigation.ToAdminDashboard)
-            "driver" -> sendEffect(LoginEffect.Navigation.ToDriverDashboard)
-            else -> sendEffect(LoginEffect.Navigation.ToCustomerHome) // CUSTOMER
+    private fun navigateByUser(user: User) {
+        when {
+            user.isAdmin() -> sendEffect(LoginEffect.Navigation.ToAdminDashboard)
+            user.isRestaurant() -> sendEffect(LoginEffect.Navigation.ToRestaurantDashboard) // New
+            user.isDriver() -> sendEffect(LoginEffect.Navigation.ToDriverDashboard)
+            else -> sendEffect(LoginEffect.Navigation.ToCustomerHome)
         }
     }
 

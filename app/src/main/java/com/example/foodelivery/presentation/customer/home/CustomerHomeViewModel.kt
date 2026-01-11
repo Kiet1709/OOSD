@@ -8,7 +8,9 @@ import com.example.foodelivery.domain.repository.IFoodRepository
 import com.example.foodelivery.domain.repository.IUserRepository
 import com.example.foodelivery.presentation.customer.home.contract.*
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -19,119 +21,46 @@ class CustomerHomeViewModel @Inject constructor(
     private val categoryRepository: ICategoryRepository
 ) : BaseViewModel<CustomerHomeState, CustomerHomeIntent, CustomerHomeEffect>(CustomerHomeState()) {
 
-    init {
-        handleIntent(CustomerHomeIntent.LoadHomeData)
+    private val _foods = foodRepository.getMenu()
+    private val _categories = categoryRepository.getCategories()
+    private val _user = userRepository.getUser()
+
+    val homeState = combine(_user, _categories, _foods) { user, categoriesResult, foodsResult ->
+        val categories = (categoriesResult as? Resource.Success)?.data?.map { 
+            CategoryUiModel(it.id, it.name, it.imageUrl)
+        } ?: emptyList()
+
+        val foods = (foodsResult as? Resource.Success)?.data ?: emptyList()
+
+        CustomerHomeState(
+            isLoading = foodsResult is Resource.Loading || categoriesResult is Resource.Loading,
+            user = user,
+            categories = categories,
+            foods = foods // 2. Assign the full list of foods
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CustomerHomeState())
+
+    fun setEvent(intent: CustomerHomeIntent) {
+        handleIntent(intent)
     }
 
-    fun setEvent(intent: CustomerHomeIntent) = handleIntent(intent)
-
     override fun handleIntent(intent: CustomerHomeIntent) {
-        when(intent) {
-           CustomerHomeIntent.ClickViewAllPopular -> setEffect {
-                CustomerHomeEffect.NavigateToFoodList("popular")
-            }
-            CustomerHomeIntent.ClickViewAllRecommended -> setEffect {
-                CustomerHomeEffect.NavigateToFoodList("recommended")
-            }
-
-            CustomerHomeIntent.LoadHomeData -> loadData()
-            CustomerHomeIntent.Refresh -> loadData()
-
-            is CustomerHomeIntent.ClickFood -> setEffect {
-                CustomerHomeEffect.NavigateToFoodDetail(intent.foodId)
-            }
-            is CustomerHomeIntent.ClickCategory -> setEffect {
-                CustomerHomeEffect.NavigateToCategory(intent.categoryId)
-            }
-            // [THÊM MỚI]: Xử lý click vào menu đơn hàng
-            CustomerHomeIntent.ClickCurrentOrder -> {
-                setEffect { CustomerHomeEffect.NavigateToTracking("ORD-CURRENT-DEMO") }
-            }
-
+        when (intent) {
+            is CustomerHomeIntent.ClickFood -> setEffect { CustomerHomeEffect.NavigateToFoodDetail(intent.food.id) }
+            is CustomerHomeIntent.ClickCategory -> setEffect { CustomerHomeEffect.NavigateToCategory(intent.categoryId) }
             CustomerHomeIntent.ClickCart -> setEffect { CustomerHomeEffect.NavigateToCart }
             CustomerHomeIntent.ClickProfile -> setEffect { CustomerHomeEffect.NavigateToProfile }
-            CustomerHomeIntent.ClickSearch -> setEffect {
-                CustomerHomeEffect.ShowToast("Tính năng tìm kiếm đang phát triển")
-            }
-
             CustomerHomeIntent.ClickSettings -> setEffect { CustomerHomeEffect.NavigateToSettings }
             CustomerHomeIntent.ClickLogout -> logout()
+            CustomerHomeIntent.ClickCurrentOrder -> setEffect { CustomerHomeEffect.NavigateToOrderHistory } // Add this
+            else -> {}
         }
     }
 
     private fun logout() {
         viewModelScope.launch {
             userRepository.logout()
-            setEffect { CustomerHomeEffect.ShowToast("Đã đăng xuất!") }
-            delay(500)
             setEffect { CustomerHomeEffect.NavigateToLogin }
-        }
-    }
-
-    private fun loadData() {
-        viewModelScope.launch {
-            setState { copy(isLoading = true) }
-
-            // 1. ✅ Lấy Categories từ Firebase
-            launch {
-                categoryRepository.getCategories().collect { result ->
-                    when (result) {
-                        is Resource.Success -> {
-                            val categories = result.data?.map { category ->
-                                CategoryUiModel(
-                                    id = category.id,
-                                    name = category.name,
-                                    iconUrl = category.imageUrl
-                                )
-                            } ?: emptyList()
-
-                            android.util.Log.d("HomeVM", "✅ Categories loaded: ${categories.size}")
-                            setState { copy(categories = categories) }
-                        }
-                        is Resource.Error -> {
-                            android.util.Log.e("HomeVM", "❌ Error categories: ${result.message}")
-                        }
-                        else -> {}
-                    }
-                }
-            }
-
-            // 2. ✅ Lấy User
-            launch {
-                userRepository.getUser().collect { user ->
-                    setState { copy(user = user) }
-                }
-            }
-
-            // 3. ✅ Lấy Foods
-            launch {
-                foodRepository.getMenu().collect { result ->
-                    when (result) {
-                        is Resource.Success -> {
-                            val foods = result.data ?: emptyList()
-                            android.util.Log.d("HomeVM", "✅ Foods loaded: ${foods.size}")
-
-                            setState {
-                                copy(
-                                    isLoading = false,
-                                    popularFoods = foods.sortedByDescending { it.rating }.take(10),
-                                    recommendedFoods = foods.shuffled().take(10)
-                                )
-                            }
-                        }
-                        is Resource.Loading -> {
-                            if (uiState.value.popularFoods.isEmpty()) {
-                                setState { copy(isLoading = true) }
-                            }
-                        }
-                        is Resource.Error -> {
-                            android.util.Log.e("HomeVM", "❌ Error foods: ${result.message}")
-                            setState { copy(isLoading = false) }
-                            setEffect { CustomerHomeEffect.ShowToast(result.message ?: "Lỗi tải món ăn") }
-                        }
-                    }
-                }
-            }
         }
     }
 }

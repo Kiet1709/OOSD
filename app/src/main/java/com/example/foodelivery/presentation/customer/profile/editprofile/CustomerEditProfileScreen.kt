@@ -1,18 +1,26 @@
 package com.example.foodelivery.presentation.customer.profile.editprofile
 
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -72,16 +80,6 @@ fun CustomerEditProfileScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Avatar cũ
-            AsyncImage(
-                model = state.avatarUrl.ifBlank { "https://i.pravatar.cc/150" },
-                contentDescription = null,
-                modifier = Modifier
-                    .size(100.dp)
-                    .clip(CircleShape)
-                    .background(Color.LightGray),
-                contentScale = ContentScale.Crop
-            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -108,6 +106,22 @@ fun CustomerEditProfileScreen(
                 label = { Text("Địa chỉ nhận hàng") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2
+            )
+
+            OutlinedTextField(
+                value = state.avatarUrl,
+                onValueChange = { viewModel.setEvent(EditProfileIntent.ChangeAvatar(it)) },
+                label = { Text("Avatar URL") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            OutlinedTextField(
+                value = state.coverPhotoUrl,
+                onValueChange = { viewModel.setEvent(EditProfileIntent.ChangeCoverPhoto(it)) },
+                label = { Text("Cover Photo URL") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
             )
 
             Spacer(modifier = Modifier.height(16.dp))

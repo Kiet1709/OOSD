@@ -30,6 +30,8 @@ class CustomerEditProfileViewModel @Inject constructor(
             is EditProfileIntent.ChangeName -> setState { copy(name = intent.value) }
             is EditProfileIntent.ChangePhone -> setState { copy(phone = intent.value) }
             is EditProfileIntent.ChangeAddress -> setState { copy(address = intent.value) }
+            is EditProfileIntent.ChangeAvatar -> setState { copy(avatarUrl = intent.value) }
+            is EditProfileIntent.ChangeCoverPhoto -> setState { copy(coverPhotoUrl = intent.value) }
 
             EditProfileIntent.ClickBack -> setEffect { EditProfileEffect.GoBack }
 
@@ -43,10 +45,7 @@ class CustomerEditProfileViewModel @Inject constructor(
             setState { copy(isLoading = true) }
 
             when(val result = userRepository.getUser(uid)) {
-                // [SỬA LỖI 1 & 2]: Thêm <*> và xử lý null cho user
                 is Resource.Success<*> -> {
-                    // Ép kiểu result.data về User (vì ta biết chắc chắn nó là User)
-                    // Hoặc dùng toán tử ?. an toàn
                     val user = result.data as? com.example.foodelivery.domain.model.User
 
                     if (user != null) {
@@ -56,7 +55,8 @@ class CustomerEditProfileViewModel @Inject constructor(
                                 name = user.name,
                                 phone = user.phoneNumber,
                                 address = user.address ?: "",
-                                avatarUrl = user.avatarUrl
+                                avatarUrl = user.avatarUrl,
+                                coverPhotoUrl = user.coverPhotoUrl
                             )
                         }
                     } else {
@@ -64,7 +64,6 @@ class CustomerEditProfileViewModel @Inject constructor(
                     }
                 }
 
-                // [SỬA LỖI 3]: Thêm <*> vào sau Resource.Error
                 is Resource.Error<*> -> {
                     setState { copy(isLoading = false) }
                     setEffect { EditProfileEffect.ShowToast(result.message ?: "Lỗi tải dữ liệu") }
@@ -89,13 +88,14 @@ class CustomerEditProfileViewModel @Inject constructor(
                 uid = uid,
                 name = currentState.name,
                 phone = currentState.phone,
-                address = currentState.address
+                address = currentState.address,
+                avatarUrl = currentState.avatarUrl,
+                coverPhotoUrl = currentState.coverPhotoUrl
             )
 
             setState { copy(isLoading = false) }
 
             when(result) {
-                // [SỬA LỖI]: Thêm <*> tương tự
                 is Resource.Success<*> -> {
                     setEffect { EditProfileEffect.ShowToast("Đã cập nhật hồ sơ") }
                     setEffect { EditProfileEffect.GoBack }

@@ -12,5 +12,6 @@ sealed class LoginEffect : ViewSideEffect {
         object ToCustomerHome : Navigation()
         object ToAdminDashboard : Navigation()
         object ToDriverDashboard : Navigation()
+        object ToRestaurantDashboard : Navigation() // New
     }
 }

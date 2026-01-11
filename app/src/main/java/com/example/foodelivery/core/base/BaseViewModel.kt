@@ -17,7 +17,7 @@ abstract class BaseViewModel<S : ViewState, I : ViewIntent, E : ViewSideEffect>(
 
     // 1. STATE MANAGEMENT
     private val _uiState = MutableStateFlow(initialState)
-    val uiState: StateFlow<S> = _uiState.asStateFlow()
+    open val uiState: StateFlow<S> = _uiState.asStateFlow()
 
     protected val currentState: S get() = _uiState.value
 

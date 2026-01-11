@@ -3,50 +3,79 @@ package com.example.foodelivery.data.repository
 import com.example.foodelivery.core.common.Resource
 import com.example.foodelivery.domain.model.Category
 import com.example.foodelivery.domain.repository.ICategoryRepository
-import kotlinx.coroutines.delay
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
-class CategoryRepositoryImpl @Inject constructor() : ICategoryRepository {
+class CategoryRepositoryImpl @Inject constructor(
+    private val firestore: FirebaseFirestore
+) : ICategoryRepository {
 
-    // Mock Data
-    private val mockList = mutableListOf(
-        Category("1", "Đồ ăn nhanh", "https://via.placeholder.com/150"),
-        Category("2", "Đồ uống", "https://via.placeholder.com/150"),
-        Category("3", "Tráng miệng", "https://via.placeholder.com/150")
-    )
+    override fun getCategories(): Flow<Resource<List<Category>>> = callbackFlow {
+        trySend(Resource.Loading())
 
-    override fun getCategories(): Flow<Resource<List<Category>>> = flow {
-        emit(Resource.Loading())
-        delay(800)
-        emit(Resource.Success(mockList.toList()))
+        val listener = firestore.collection("categories").addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                trySend(Resource.Error(error.localizedMessage ?: "An unexpected error occurred"))
+                close(error)
+                return@addSnapshotListener
+            }
+
+            if (snapshot != null) {
+                val categories = snapshot.toObjects(Category::class.java)
+                trySend(Resource.Success(categories))
+            } else {
+                trySend(Resource.Error("No data found"))
+            }
+        }
+
+        awaitClose { listener.remove() }
     }
 
     override suspend fun getCategoryById(id: String): Resource<Category> {
-        delay(500)
-        val item = mockList.find { it.id == id }
-        return if (item != null) Resource.Success(item) else Resource.Error("Không tìm thấy")
+        return try {
+            val snapshot = firestore.collection("categories").document(id).get().await()
+            val category = snapshot.toObject(Category::class.java)
+            if (category != null) {
+                Resource.Success(category)
+            } else {
+                Resource.Error("Category not found")
+            }
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "An unexpected error occurred")
+        }
     }
 
     override suspend fun addCategory(category: Category): Resource<Boolean> {
-        delay(1000)
-        mockList.add(category.copy(id = (mockList.size + 1).toString()))
-        return Resource.Success(true)
+        return try {
+            // Firestore will auto-generate an ID
+            val docRef = firestore.collection("categories").document()
+            val newCategory = category.copy(id = docRef.id)
+            docRef.set(newCategory).await()
+            Resource.Success(true)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to add category")
+        }
     }
 
     override suspend fun updateCategory(category: Category): Resource<Boolean> {
-        delay(1000)
-        val index = mockList.indexOfFirst { it.id == category.id }
-        return if (index != -1) {
-            mockList[index] = category
+        return try {
+            firestore.collection("categories").document(category.id).set(category).await()
             Resource.Success(true)
-        } else Resource.Error("Lỗi cập nhật")
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to update category")
+        }
     }
 
     override suspend fun deleteCategory(id: String): Resource<Boolean> {
-        delay(800)
-        val removed = mockList.removeIf { it.id == id }
-        return if (removed) Resource.Success(true) else Resource.Error("Xóa thất bại")
+        return try {
+            firestore.collection("categories").document(id).delete().await()
+            Resource.Success(true)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to delete category")
+        }
     }
 }

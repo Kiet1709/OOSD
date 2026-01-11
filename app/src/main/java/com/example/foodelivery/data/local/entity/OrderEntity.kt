@@ -7,6 +7,7 @@ data class OrderEntity(
     @PrimaryKey val id: String,
     val userId: String,
     val driverId: String?,
+    val restaurantId: String, // Add this field
     val status: String,
     val totalPrice: Double,
     val shippingAddress: String,

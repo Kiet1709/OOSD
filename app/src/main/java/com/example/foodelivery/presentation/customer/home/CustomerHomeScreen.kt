@@ -4,7 +4,9 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,7 +24,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.foodelivery.presentation.customer.home.components.HomeFoodSection
+import com.example.foodelivery.presentation.customer.home.components.FoodCard
 import com.example.foodelivery.presentation.customer.home.components.HomeHeader
 import com.example.foodelivery.presentation.customer.home.contract.*
 import com.example.foodelivery.ui.theme.PrimaryColor
@@ -33,7 +35,7 @@ fun CustomerHomeScreen(
     navController: NavController,
     viewModel: CustomerHomeViewModel = hiltViewModel()
 ) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val state by viewModel.homeState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var searchText by remember { mutableStateOf("") }
 
@@ -42,25 +44,18 @@ fun CustomerHomeScreen(
             when(effect) {
                 is CustomerHomeEffect.NavigateToFoodDetail ->
                     navController.navigate(Route.CustomerFoodDetail.createRoute(effect.foodId))
-                // ✅ THÊM: Navigate to Category
                 is CustomerHomeEffect.NavigateToCategory ->
                     navController.navigate(Route.CustomerFoodList.createRoute(effect.categoryId))
-
-                // ✅ THÊM: Navigate to FoodList (Popular/Recommended)
                 is CustomerHomeEffect.NavigateToFoodList ->
                     navController.navigate(Route.CustomerFoodList.createRoute(effect.type))
                 CustomerHomeEffect.NavigateToCart -> navController.navigate(Route.CustomerCart.path)
                 CustomerHomeEffect.NavigateToProfile -> navController.navigate(Route.CustomerProfile.path)
-                CustomerHomeEffect.NavigateToLogin -> navController.navigate(Route.Login.path) {
-                    popUpTo(0) { inclusive = true }
-                }
-                is CustomerHomeEffect.NavigateToTracking -> {
-                    navController.navigate(Route.CustomerTracking.createRoute(effect.orderId))
-                }
-
+                CustomerHomeEffect.NavigateToSettings -> navController.navigate(Route.CustomerSettings.path)
+                CustomerHomeEffect.NavigateToLogin -> navController.navigate(Route.Login.path) { popUpTo(0) { inclusive = true } }
+                CustomerHomeEffect.NavigateToOrderHistory -> navController.navigate(Route.CustomerOrderHistory.path) // Add this
+                is CustomerHomeEffect.NavigateToTracking -> navController.navigate(Route.CustomerTracking.createRoute(effect.orderId))
                 is CustomerHomeEffect.ShowToast -> Toast.makeText(context, effect.msg, Toast.LENGTH_SHORT).show()
                 else -> {}
-
             }
         }
     }
@@ -68,74 +63,50 @@ fun CustomerHomeScreen(
     Scaffold(
         containerColor = Color(0xFFF9F9F9),
         topBar = {
-            // [SỬA]: Truyền state.user vào Header
             HomeHeader(
-                user = state.user, // Dùng object user
-                modifier = Modifier.background(Color.White),
+                user = state.user,
+                modifier = Modifier.background(Color.White).statusBarsPadding(),
                 onCartClick = { viewModel.setEvent(CustomerHomeIntent.ClickCart) },
                 onProfileClick = { viewModel.setEvent(CustomerHomeIntent.ClickProfile) },
-                // [THÊM MỚI]: Truyền sự kiện xuống ViewModel
                 onOrderClick = { viewModel.setEvent(CustomerHomeIntent.ClickCurrentOrder) },
                 onSettingsClick = { viewModel.setEvent(CustomerHomeIntent.ClickSettings) },
                 onLogoutClick = { viewModel.setEvent(CustomerHomeIntent.ClickLogout) }
             )
         }
     ) { padding ->
-        if (state.isLoading) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = PrimaryColor)
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.padding(padding).fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 24.dp)
-            ) {
-                // 1. Search Bar
-                item {
-                    HomeSearchBar(
-                        text = searchText,
-                        onTextChange = { searchText = it },
-                        onSearchClicked = { viewModel.setEvent(CustomerHomeIntent.ClickSearch) }
-                    )
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            HomeSearchBar(
+                text = searchText,
+                onTextChange = { searchText = it },
+                onSearchClicked = { /* TODO */ }
+            )
+            CategorySection(
+                categories = state.categories,
+                onClick = { viewModel.setEvent(CustomerHomeIntent.ClickCategory(it)) }
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            if (state.isLoading) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = PrimaryColor)
                 }
-
-                // 2. Categories
-                item {
-                    CategorySection(
-                        categories = state.categories,
-                        onClick = { viewModel.setEvent(CustomerHomeIntent.ClickCategory(it)) }
-                    )
-                }
-
-                // 3. Popular Food
-                item {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    HomeFoodSection(
-                        title = "Món Ngon Nổi Bật",
-                        foods = state.popularFoods,
-                        onFoodClick = { viewModel.setEvent(CustomerHomeIntent.ClickFood(it)) },
-                        // ✅ THÊM callback cho "Xem tất cả"
-                        onViewAllClick = { viewModel.setEvent(CustomerHomeIntent.ClickViewAllPopular) }
-                    )
-                }
-
-                // 4. Recommended Food
-                item {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    HomeFoodSection(
-                        title = "Gợi Ý Cho Bạn",
-                        foods = state.recommendedFoods,
-                        onFoodClick = { viewModel.setEvent(CustomerHomeIntent.ClickFood(it)) },
-                        // ✅ THÊM callback cho "Xem tất cả"
-                        onViewAllClick = { viewModel.setEvent(CustomerHomeIntent.ClickViewAllRecommended) }
-                    )
+            } else {
+                 LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                    contentPadding = PaddingValues(bottom = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(state.foods) { food ->
+                        FoodCard(food = food, onClick = { viewModel.setEvent(CustomerHomeIntent.ClickFood(food)) })
+                    }
                 }
             }
         }
     }
 }
 
-// --- Local Components (Giữ nguyên) ---
 @Composable
 fun HomeSearchBar(text: String, onTextChange: (String) -> Unit, onSearchClicked: () -> Unit) {
     OutlinedTextField(

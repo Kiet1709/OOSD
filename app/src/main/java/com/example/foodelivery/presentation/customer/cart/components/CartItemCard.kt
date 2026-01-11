@@ -1,14 +1,11 @@
 package com.example.foodelivery.presentation.customer.cart.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -17,111 +14,76 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.example.foodelivery.core.common.toVndCurrency
 import com.example.foodelivery.presentation.customer.cart.contract.CartItemUiModel
-import java.text.NumberFormat
-import java.util.Locale
 
 @Composable
 fun CartItemCard(
     item: CartItemUiModel,
     onIncrease: () -> Unit,
     onDecrease: () -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    isInteractive: Boolean = true
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(1.dp)
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 1. Ảnh
             AsyncImage(
                 model = item.imageUrl,
-                contentDescription = null,
+                contentDescription = item.name,
                 modifier = Modifier
                     .size(80.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFFF0F0F0)),
+                    .clip(RoundedCornerShape(12.dp)),
                 contentScale = ContentScale.Crop
             )
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // 2. Thông tin + Bộ đếm
+            Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(
-                        text = item.name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                    // Nút Xóa nhỏ
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Xóa",
-                        tint = Color.Gray,
-                        modifier = Modifier.size(18.dp).clickable { onRemove() }
-                    )
-                }
-
+                Text(item.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = NumberFormat.getCurrencyInstance(Locale("vi", "VN")).format(item.price),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold
-                )
-
+                Text(item.price.toVndCurrency(), fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.height(8.dp))
-
-                // Bộ đếm (+ 1 -)
-                QuantitySelector(qty = item.quantity, onIncrease = onIncrease, onDecrease = onDecrease)
+                if (isInteractive) {
+                    QuantitySelector(item.quantity, onIncrease, onDecrease)
+                } else {
+                    Text("Số lượng: ${item.quantity}", fontWeight = FontWeight.Medium, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            // This IconButton will now only be shown if isInteractive is true
+            if (isInteractive) {
+                IconButton(onClick = onRemove) {
+                    Icon(Icons.Default.Close, contentDescription = "Remove")
+                }
             }
         }
     }
 }
 
 @Composable
-private fun QuantitySelector(qty: Int, onIncrease: () -> Unit, onDecrease: () -> Unit) {
+private fun QuantitySelector(
+    quantity: Int,
+    onIncrease: () -> Unit,
+    onDecrease: () -> Unit
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        // Nút Trừ
-        Box(
-            modifier = Modifier
-                .size(28.dp)
-                .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
-                .clickable { onDecrease() },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Default.Remove, null, modifier = Modifier.size(16.dp), tint = Color.Gray)
+        OutlinedIconButton(onClick = onDecrease, modifier = Modifier.size(32.dp)) {
+            Icon(Icons.Default.Remove, contentDescription = "Decrease")
         }
-
-        // Số lượng
         Text(
-            text = "$qty",
+            text = quantity.toString(),
             modifier = Modifier.padding(horizontal = 16.dp),
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.bodyLarge
         )
-
-        // Nút Cộng
-        Box(
-            modifier = Modifier
-                .size(28.dp)
-                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
-                .clickable { onIncrease() },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp), tint = Color.White)
+        IconButton(onClick = onIncrease, modifier = Modifier.size(32.dp)) {
+            Icon(Icons.Default.Add, contentDescription = "Increase")
         }
     }
 }

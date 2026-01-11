@@ -14,7 +14,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class RegisterViewModel @Inject constructor(
-    private val registerUseCase: RegisterUseCase // [INJECT USECASE ĐÃ SỬA]
+    private val registerUseCase: RegisterUseCase
 ) : BaseViewModel<RegisterState, RegisterIntent, RegisterEffect>(RegisterState()) {
 
     override fun handleIntent(intent: RegisterIntent) {
@@ -24,38 +24,31 @@ class RegisterViewModel @Inject constructor(
             is RegisterIntent.PhoneChanged -> setState { copy(phone = intent.phone, phoneError = null) }
             is RegisterIntent.PasswordChanged -> setState { copy(pass = intent.password, passError = null) }
             is RegisterIntent.ConfirmPasswordChanged -> setState { copy(confirmPass = intent.confirmPass, confirmPassError = null) }
-
             RegisterIntent.TogglePasswordVisibility -> setState { copy(isPasswordVisible = !isPasswordVisible) }
             RegisterIntent.ToggleConfirmPasswordVisibility -> setState { copy(isConfirmPasswordVisible = !isConfirmPasswordVisible) }
-
             RegisterIntent.SubmitRegister -> register()
             RegisterIntent.ClickLogin -> setEffect { RegisterEffect.Navigation.ToLogin }
         }
     }
 
-    // Bridge function cho View
     fun processIntent(intent: RegisterIntent) = handleIntent(intent)
 
     private fun register() {
         val currentState = uiState.value
 
-        // --- VALIDATION UI ---
         if (currentState.name.isBlank()) { setState { copy(nameError = "Thiếu tên") }; return }
         if (currentState.email.isBlank()) { setState { copy(emailError = "Thiếu email") }; return }
         if (currentState.phone.isBlank()) { setState { copy(phoneError = "Thiếu SĐT") }; return }
-        // Validate mật khẩu
         if (currentState.pass.length < 6) { setState { copy(passError = "Mật khẩu < 6 ký tự") }; return }
         if (currentState.pass != currentState.confirmPass) { setState { copy(confirmPassError = "Mật khẩu không khớp") }; return }
 
         viewModelScope.launch {
-            // --- GỌI USECASE THẬT ---
-            // Mặc định role là "CUSTOMER"
             registerUseCase(
                 name = currentState.name,
                 email = currentState.email,
                 pass = currentState.pass,
                 phone = currentState.phone,
-                role = "CUSTOMER"
+                role = "CUSTOMER" // Always register as a customer from this screen
             ).collect { result ->
                 when (result) {
                     is Resource.Loading -> {

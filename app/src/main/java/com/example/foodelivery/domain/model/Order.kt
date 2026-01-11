@@ -6,6 +6,7 @@ data class Order(
     val id: String,
     val userId: String,
     val driverId: String?,
+    val restaurantId: String, // Add this field
     val status: OrderStatus,
     val totalPrice: Double,
     val shippingAddress: String, // Chuẩn hóa
@@ -29,6 +30,7 @@ data class Order(
     fun isValid(): Boolean {
         return id.isNotEmpty() &&
                 userId.isNotEmpty() &&
+                restaurantId.isNotEmpty() && // Add this check
                 status != OrderStatus.PENDING || shippingAddress.isNotEmpty() &&
                 totalPrice > 0 &&
                 items.isNotEmpty()

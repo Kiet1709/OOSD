@@ -7,86 +7,85 @@ import com.example.foodelivery.core.common.Resource
 import com.example.foodelivery.domain.model.CartItem
 import com.example.foodelivery.domain.repository.ICartRepository
 import com.example.foodelivery.domain.repository.IFoodRepository
-import com.example.foodelivery.presentation.customer.food.detail.Contract.*
-// [ĐÃ XÓA IMPORT FoodUiModel]
+import com.example.foodelivery.domain.repository.IUserRepository
+import com.example.foodelivery.presentation.customer.food.detail.contract.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class FoodDetailViewModel @Inject constructor(
-    private val foodRepository: IFoodRepository,
-    private val cartRepository: ICartRepository,
+    private val foodRepo: IFoodRepository,
+    private val userRepo: IUserRepository,
+    private val cartRepo: ICartRepository,
     savedStateHandle: SavedStateHandle
 ) : BaseViewModel<FoodDetailState, FoodDetailIntent, FoodDetailEffect>(FoodDetailState()) {
 
-    // Lấy ID từ navigation args (nếu cần)
     init {
-        savedStateHandle.get<String>("foodId")?.let { loadFoodDetail(it) }
-    }
-
-    fun setEvent(intent: FoodDetailIntent) = handleIntent(intent)
-
-    override fun handleIntent(intent: FoodDetailIntent) {
-        when(intent) {
-            is FoodDetailIntent.LoadDetail -> loadFoodDetail(intent.foodId)
-            FoodDetailIntent.IncreaseQuantity -> updateQuantity(1)
-            FoodDetailIntent.DecreaseQuantity -> updateQuantity(-1)
-            FoodDetailIntent.ClickAddToCart -> addToCart()
-            FoodDetailIntent.ClickBack -> setEffect { FoodDetailEffect.NavigateBack }
+        savedStateHandle.get<String>("foodId")?.let {
+            handleIntent(FoodDetailIntent.LoadFoodDetail(it))
         }
     }
 
-    private fun loadFoodDetail(id: String) {
+    fun setEvent(intent: FoodDetailIntent) {
+        handleIntent(intent)
+    }
+
+    override fun handleIntent(intent: FoodDetailIntent) {
+        when (intent) {
+            is FoodDetailIntent.LoadFoodDetail -> loadData(intent.foodId)
+            is FoodDetailIntent.IncreaseQuantity -> {
+                val newQuantity = uiState.value.quantity + 1
+                setState { copy(quantity = newQuantity) }
+            }
+            is FoodDetailIntent.DecreaseQuantity -> {
+                val newQuantity = if (uiState.value.quantity > 1) uiState.value.quantity - 1 else 1
+                setState { copy(quantity = newQuantity) }
+            }
+            is FoodDetailIntent.AddToCart -> addToCart()
+        }
+    }
+
+    private fun loadData(foodId: String) {
         viewModelScope.launch {
             setState { copy(isLoading = true) }
-            when(val result = foodRepository.getFoodDetail(id)) {
-                is Resource.Success -> {
-                    val data = result.data ?: return@launch
-                    // [SỬA]: Gán trực tiếp Food, không cần tạo FoodUiModel
-                    setState {
-                        copy(
-                            isLoading = false,
-                            food = data,
-                            totalPrice = data.price * quantity
-                        )
-                    }
+            val foodResult = foodRepo.getFoodDetail(foodId)
+
+            if (foodResult is Resource.Success) {
+                val food = foodResult.data!!
+                val restaurantResult = userRepo.getUserById(food.restaurantId)
+                setState {
+                    copy(
+                        isLoading = false,
+                        food = food,
+                        restaurant = restaurantResult
+                    )
                 }
-                is Resource.Error -> setEffect { FoodDetailEffect.ShowToast(result.message ?: "Lỗi") }
-                else -> {}
+            } else {
+                setState { copy(isLoading = false) }
+                setEffect { FoodDetailEffect.ShowToast("Không thể tải thông tin món ăn") }
             }
         }
     }
 
-    private fun updateQuantity(delta: Int) {
-        val newQty = (currentState.quantity + delta).coerceAtLeast(1)
-        setState { copy(quantity = newQty, totalPrice = newQty * (currentState.food?.price ?: 0.0)) }
-    }
-
     private fun addToCart() {
-        val food = currentState.food ?: return
-
         viewModelScope.launch {
-            try {
-                android.util.Log.d("FoodDetailVM", "🛒 Adding to cart: ${food.name}")
-
-                cartRepository.addToCart(
-                    CartItem(
-                        foodId = food.id,
-                        name = food.name,
-                        price = food.price,
-                        quantity = currentState.quantity,
-                        imageUrl = food.imageUrl,
-                        note = ""
-                    )
+            val state = uiState.value
+            val food = state.food
+            if (food != null) {
+                // Corrected: Create a CartItem object and pass it to the repository
+                val cartItem = CartItem(
+                    foodId = food.id,
+                    name = food.name,
+                    price = food.price,
+                    imageUrl = food.imageUrl,
+                    quantity = state.quantity,
+                    note = "", // Assuming note can be empty for now
+                    restaurantId = food.restaurantId // Add this line
                 )
-
-                android.util.Log.d("FoodDetailVM", "✅ Added to cart successfully")
-                setEffect { FoodDetailEffect.ShowToast("Đã thêm vào giỏ hàng!") }
-                setEffect { FoodDetailEffect.NavigateToCart }
-            } catch (e: Exception) {
-                android.util.Log.e("FoodDetailVM", "❌ Error adding to cart: ${e.message}")
-                setEffect { FoodDetailEffect.ShowToast("Lỗi thêm vào giỏ: ${e.message}") }
+                cartRepo.addToCart(cartItem)
+                setEffect { FoodDetailEffect.ShowToast("Đã thêm vào giỏ hàng") }
+                setEffect { FoodDetailEffect.NavigateBack }
             }
         }
     }

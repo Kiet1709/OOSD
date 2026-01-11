@@ -1,5 +1,6 @@
 package com.example.foodelivery.presentation.admin.category.add_edit
 
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -30,10 +31,10 @@ class AddEditCategoryViewModel @Inject constructor(
     val effect = _effect.receiveAsFlow()
 
     init {
-        // Get categoryId from navigation argument
-        val id = savedStateHandle.get<String>("categoryId")
-        if (id != null && id != "new") {
-            processIntent(AddEditCategoryIntent.LoadCategory(id))
+        savedStateHandle.get<String>("categoryId")?.let {
+            if (it != "new") {
+                processIntent(AddEditCategoryIntent.LoadCategory(it))
+            }
         }
     }
 
@@ -43,8 +44,11 @@ class AddEditCategoryViewModel @Inject constructor(
             is AddEditCategoryIntent.NameChanged -> {
                 _state.update { it.copy(name = intent.value, nameError = null) }
             }
+            is AddEditCategoryIntent.ImageUrlChanged -> {
+                _state.update { it.copy(imageUrl = intent.value, imageUri = null, imageError = null) }
+            }
             is AddEditCategoryIntent.ImageSelected -> {
-                _state.update { it.copy(imageUri = intent.uri, imageError = null) }
+                _state.update { it.copy(imageUri = intent.uri, imageUrl = "", imageError = null) }
             }
             AddEditCategoryIntent.ClickBack -> {
                 sendEffect(AddEditCategoryEffect.NavigateBack)
@@ -58,7 +62,6 @@ class AddEditCategoryViewModel @Inject constructor(
     private fun loadData(id: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
-
             when (val result = getByIdUseCase(id)) {
                 is Resource.Success -> {
                     val cat = result.data
@@ -74,7 +77,7 @@ class AddEditCategoryViewModel @Inject constructor(
                 }
                 is Resource.Error -> {
                     _state.update { it.copy(isLoading = false) }
-                    sendEffect(AddEditCategoryEffect.ShowToast("Lỗi tải dữ liệu"))
+                    sendEffect(AddEditCategoryEffect.ShowToast("Lỗi tải dữ liệu: ${result.message}"))
                     sendEffect(AddEditCategoryEffect.NavigateBack)
                 }
                 else -> {
@@ -87,53 +90,43 @@ class AddEditCategoryViewModel @Inject constructor(
     private fun submit() {
         val currentState = _state.value
 
-        // Validate name
         if (currentState.name.isBlank()) {
             _state.update { it.copy(nameError = "Tên không được để trống") }
             return
         }
 
-        // Validate image (required for new category)
-        if (!currentState.isEditMode && currentState.imageUri == null) {
-            _state.update { it.copy(imageError = "Vui lòng chọn ảnh") }
+        if (!currentState.isEditMode && currentState.imageUri == null && currentState.imageUrl.isNullOrBlank()) {
+            _state.update { it.copy(imageError = "Vui lòng chọn ảnh hoặc nhập URL") }
             return
         }
 
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
 
-            // Step 1: Upload image if selected
             var finalImageUrl = currentState.imageUrl ?: ""
 
             if (currentState.imageUri != null) {
                 when (val uploadResult = uploadImageUseCase(currentState.imageUri)) {
-                    is Resource.Success -> {
-                        finalImageUrl = uploadResult.data ?: ""
-                    }
+                    is Resource.Success -> finalImageUrl = uploadResult.data ?: ""
                     is Resource.Error -> {
                         _state.update { it.copy(isLoading = false) }
                         sendEffect(AddEditCategoryEffect.ShowToast("Lỗi upload ảnh: ${uploadResult.message}"))
                         return@launch
                     }
-                    else -> {
-                        _state.update { it.copy(isLoading = false) }
-                        sendEffect(AddEditCategoryEffect.ShowToast("Lỗi upload ảnh"))
-                        return@launch
-                    }
+                    else -> {}
                 }
             }
 
-            // Step 2: Save category
+            val category = Category(
+                id = currentState.categoryId ?: "",
+                name = currentState.name,
+                imageUrl = finalImageUrl
+            )
+
             val saveResult = if (currentState.isEditMode) {
-                updateUseCase(
-                    Category(
-                        id = currentState.categoryId ?: "",
-                        name = currentState.name,
-                        imageUrl = finalImageUrl
-                    )
-                )
+                updateUseCase(category)
             } else {
-                addUseCase(currentState.name, finalImageUrl)
+                addUseCase(category.name, category.imageUrl)
             }
 
             _state.update { it.copy(isLoading = false) }
@@ -147,16 +140,12 @@ class AddEditCategoryViewModel @Inject constructor(
                 is Resource.Error -> {
                     sendEffect(AddEditCategoryEffect.ShowToast("Lỗi: ${saveResult.message}"))
                 }
-                else -> {
-                    sendEffect(AddEditCategoryEffect.ShowToast("Lỗi không xác định"))
-                }
+                else -> {}
             }
         }
     }
 
     private fun sendEffect(effect: AddEditCategoryEffect) {
-        viewModelScope.launch {
-            _effect.send(effect)
-        }
+        viewModelScope.launch { _effect.send(effect) }
     }
 }

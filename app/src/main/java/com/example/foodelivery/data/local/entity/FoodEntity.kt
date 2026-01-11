@@ -1,5 +1,6 @@
 package com.example.foodelivery.data.local.entity
-import androidx.room.Entity; import androidx.room.PrimaryKey
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 
 @Entity(tableName = "foods")
 data class FoodEntity(
@@ -9,6 +10,7 @@ data class FoodEntity(
     val price: Double,
     val imageUrl: String,
     val categoryId: String,
+    val restaurantId: String, // New
     val rating: Double,
     val isAvailable: Boolean
 )

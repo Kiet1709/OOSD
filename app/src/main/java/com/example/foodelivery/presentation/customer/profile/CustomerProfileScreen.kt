@@ -55,10 +55,8 @@ fun CustomerProfileScreen(
 
                 ProfileEffect.NavigateToEditProfile -> {
                     navController.navigate(Route.CustomerEditProfile.path)
-                    Toast.makeText(context, "Đến màn hình Edit Profile", Toast.LENGTH_SHORT).show()
                 }
 
-                // [SỬA LỖI 2]: Thêm 2 nhánh này để Navigation hoạt động (hoặc báo lỗi nếu Route chưa config)
                 ProfileEffect.NavigateToAddressList -> {
                     navController.navigate(Route.CustomerAddress.path)
                 }
@@ -141,27 +139,37 @@ fun CustomerProfileScreen(
 
 @Composable
 fun ProfileHeaderSection(user: User?, onEditClick: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxWidth().background(Color.White).padding(vertical = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box {
-            AsyncImage(
-                model = user?.avatarUrl?.ifBlank { "https://i.pravatar.cc/150" } ?: "https://i.pravatar.cc/150",
-                contentDescription = null,
-                modifier = Modifier.size(100.dp).clip(CircleShape).background(Color.LightGray),
-                contentScale = ContentScale.Crop
-            )
-            IconButton(
-                onClick = onEditClick,
-                modifier = Modifier.align(Alignment.BottomEnd).offset(x = 4.dp, y = 4.dp).background(PrimaryColor, CircleShape).size(32.dp)
-            ) {
-                Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White, modifier = Modifier.size(16.dp))
+    Box(modifier = Modifier.fillMaxWidth()) {
+        AsyncImage(
+            model = user?.coverPhotoUrl?.ifBlank { "https://picsum.photos/400/200" } ?: "https://picsum.photos/400/200",
+            contentDescription = "Cover photo",
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp),
+            contentScale = ContentScale.Crop
+        )
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(top = 100.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box {
+                AsyncImage(
+                    model = user?.avatarUrl?.ifBlank { "https://i.pravatar.cc/150" } ?: "https://i.pravatar.cc/150",
+                    contentDescription = null,
+                    modifier = Modifier.size(100.dp).clip(CircleShape).background(Color.LightGray),
+                    contentScale = ContentScale.Crop
+                )
+                IconButton(
+                    onClick = onEditClick,
+                    modifier = Modifier.align(Alignment.BottomEnd).offset(x = 4.dp, y = 4.dp).background(PrimaryColor, CircleShape).size(32.dp)
+                ) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White, modifier = Modifier.size(16.dp))
+                }
             }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(text = user?.name ?: "Khách hàng", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(text = user?.email ?: "Chưa cập nhật email", color = Color.Gray)
         }
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(text = user?.name ?: "Khách hàng", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Text(text = user?.email ?: "Chưa cập nhật email", color = Color.Gray)
     }
 }
 

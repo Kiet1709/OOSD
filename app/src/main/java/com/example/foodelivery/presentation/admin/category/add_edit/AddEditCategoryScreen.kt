@@ -37,7 +37,6 @@ fun AddEditCategoryScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // Image picker launcher
     val imageLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri ->
@@ -46,7 +45,6 @@ fun AddEditCategoryScreen(
         }
     }
 
-    // Handle effects
     LaunchedEffect(Unit) {
         viewModel.effect.collectLatest { effect ->
             when (effect) {
@@ -91,7 +89,6 @@ fun AddEditCategoryScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Image Picker Section
             Text(
                 "Ảnh danh mục",
                 style = MaterialTheme.typography.titleMedium,
@@ -109,40 +106,44 @@ fun AddEditCategoryScreen(
                     .clickable { imageLauncher.launch("image/*") },
                 contentAlignment = Alignment.Center
             ) {
-                when {
-                    state.imageUri != null -> {
-                        AsyncImage(
-                            model = state.imageUri,
-                            contentDescription = "Selected Image",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
+                val displayImage = state.imageUri ?: state.imageUrl
+                if (displayImage != null && displayImage.toString().isNotEmpty()) {
+                    AsyncImage(
+                        model = displayImage,
+                        contentDescription = "Category Image",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            Icons.Default.AddPhotoAlternate,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(48.dp)
                         )
-                    }
-                    !state.imageUrl.isNullOrEmpty() -> {
-                        AsyncImage(
-                            model = state.imageUrl,
-                            contentDescription = "Category Image",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    else -> {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                Icons.Default.AddPhotoAlternate,
-                                contentDescription = null,
-                                tint = Color.Gray,
-                                modifier = Modifier.size(48.dp)
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Chọn ảnh", color = Color.Gray)
-                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Chọn ảnh", color = Color.Gray)
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // URL Input Field
+            OutlinedTextField(
+                value = state.imageUrl ?: "",
+                onValueChange = { newUrl ->
+                    viewModel.processIntent(AddEditCategoryIntent.ImageUrlChanged(newUrl))
+                },
+                label = { Text("Hoặc dán URL ảnh") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(8.dp)
+            )
 
             if (state.imageError != null) {
                 Text(
@@ -157,7 +158,6 @@ fun AddEditCategoryScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Name Input Section
             Text(
                 "Tên danh mục",
                 style = MaterialTheme.typography.titleMedium,
@@ -176,11 +176,7 @@ fun AddEditCategoryScreen(
                 modifier = Modifier.fillMaxWidth(),
                 isError = state.nameError != null,
                 singleLine = true,
-                shape = RoundedCornerShape(8.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFFFF6B35),
-                    unfocusedBorderColor = Color.LightGray
-                )
+                shape = RoundedCornerShape(8.dp)
             )
 
             if (state.nameError != null) {
@@ -196,18 +192,13 @@ fun AddEditCategoryScreen(
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            // Submit Button
             Button(
                 onClick = { viewModel.processIntent(AddEditCategoryIntent.Submit) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
                 enabled = !state.isLoading,
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFF6B35),
-                    disabledContainerColor = Color.Gray
-                )
+                shape = RoundedCornerShape(8.dp)
             ) {
                 if (state.isLoading) {
                     CircularProgressIndicator(
@@ -219,7 +210,6 @@ fun AddEditCategoryScreen(
                     Text(
                         if (state.isEditMode) "CẬP NHẬT" else "THÊM",
                         fontWeight = FontWeight.Bold,
-                        fontSize = MaterialTheme.typography.titleMedium.fontSize
                     )
                 }
             }

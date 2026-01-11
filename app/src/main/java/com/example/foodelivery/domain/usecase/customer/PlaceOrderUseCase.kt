@@ -15,7 +15,8 @@ class PlaceOrderUseCase @Inject constructor(
     suspend operator fun invoke(
         shippingAddress: String,
         items: List<CartItem>,
-        totalPrice: Double
+        totalPrice: Double,
+        restaurantId: String // Add this parameter
     ): Resource<String> {
         // 1. Lấy User hiện tại (Bắt buộc phải có User mới tạo được đơn)
         val currentUser = authRepository.getCurrentUser()
@@ -29,6 +30,7 @@ class PlaceOrderUseCase @Inject constructor(
             id = "", // Để rỗng, Repository sẽ tự sinh ID hoặc lấy từ Firebase
             userId = currentUser.id,
             driverId = null,
+            restaurantId = restaurantId, // Add this field
             status = OrderStatus.PENDING,
             totalPrice = totalPrice,
             shippingAddress = shippingAddress,
