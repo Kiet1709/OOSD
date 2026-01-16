@@ -104,9 +104,6 @@ class ForgotPasswordViewModel @Inject constructor(
 
         viewModelScope.launch {
             updateState { copy(isLoading = true, error = null) }
-
-            // Giả lập API verify OTP và đổi pass (Vì IAuthRepository hiện chỉ có sendPasswordResetEmail)
-            // Trong thực tế, bạn sẽ gọi một UseCase như: confirmResetPassUseCase(otp, newPass)
             kotlinx.coroutines.delay(1500) // Fake delay
 
             updateState { copy(isLoading = false) }

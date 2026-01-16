@@ -19,30 +19,49 @@ import javax.inject.Inject
 
 @HiltViewModel
 class CustomerCartViewModel @Inject constructor(
-    getCartUseCase: GetCartUseCase,
+    private val getCartUseCase: GetCartUseCase,
     private val updateCartQuantityUseCase: UpdateCartQuantityUseCase,
     private val removeCartItemUseCase: RemoveCartItemUseCase,
-    getUserInfoUseCase: GetUserInfoUseCase
+    private val getUserInfoUseCase: GetUserInfoUseCase
 ) : BaseViewModel<CartState, CartIntent, CartEffect>(CartState()) {
 
-    override val uiState = combine(
-        getCartUseCase(),
-        getUserInfoUseCase()
-    ) { cartItems, user ->
-        val uiItems = cartItems.map { it.toUiModel() }
-        val subTotal = uiItems.sumOf { it.itemTotal }
-        val deliveryFee = if (subTotal > 0) Constants.DELIVERY_FEE else 0.0
-        val finalTotal = subTotal + deliveryFee
+    init {
+        getData()
+    }
 
-        CartState(
-            items = uiItems,
-            address = user?.address ?: "",
-            subTotal = subTotal,
-            deliveryFee = deliveryFee,
-            finalTotal = finalTotal,
-            isLoading = false
-        )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CartState(isLoading = true))
+    private fun getData() {
+        viewModelScope.launch {
+            getCartUseCase().collect { cartItems ->
+                val uiItems = cartItems.map { it.toUiModel() }
+                val subTotal = uiItems.sumOf { it.itemTotal }
+                val deliveryFee = if (subTotal > 0) Constants.DELIVERY_FEE else 0.0
+                val finalTotal = subTotal + deliveryFee
+
+                setState {
+                    copy(
+                        items = uiItems,
+                        subTotal = subTotal,
+                        deliveryFee = deliveryFee,
+                        finalTotal = finalTotal,
+                        isLoading = false
+                    )
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            getUserInfoUseCase().collect { user ->
+                val userAddress = user?.address ?: ""
+                setState {
+                    if (address.isBlank()) {
+                        copy(address = userAddress)
+                    } else {
+                        this
+                    }
+                }
+            }
+        }
+    }
 
     fun setEvent(intent: CartIntent) = handleIntent(intent)
 
@@ -60,7 +79,7 @@ class CustomerCartViewModel @Inject constructor(
 
     private fun navigateToCheckout() {
         val state = uiState.value
-        if (state.isCartEmpty) {
+        if (state.items.isEmpty()) {
             setEffect { CartEffect.ShowToast("Giỏ hàng đang trống!") }
             return
         }
@@ -68,7 +87,7 @@ class CustomerCartViewModel @Inject constructor(
             setEffect { CartEffect.ShowToast("Vui lòng nhập địa chỉ nhận hàng!") }
             return
         }
-        setEffect { CartEffect.NavigateToCheckout }
+        setEffect { CartEffect.NavigateToCheckout(state.address) }
     }
 
     private fun updateQuantity(foodId: String, delta: Int) {

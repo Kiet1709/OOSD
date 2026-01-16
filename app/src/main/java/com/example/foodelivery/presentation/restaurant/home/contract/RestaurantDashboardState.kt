@@ -1,4 +1,10 @@
 package com.example.foodelivery.presentation.restaurant.home.contract
 
-// This file is intentionally left blank to resolve a redeclaration issue.
-// The RestaurantDashboardState is now defined within RestaurantDashboardContract.kt.
+import com.example.foodelivery.core.base.ViewState
+
+data class RestaurantDashboardState(
+    val restaurantName: String = "",
+    val avatarUrl: String = "",
+    val todayRevenue: Double = 0.0,
+    val totalRevenue: Double = 0.0
+) : ViewState

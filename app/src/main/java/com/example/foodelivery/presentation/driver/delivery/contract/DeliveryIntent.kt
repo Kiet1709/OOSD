@@ -8,4 +8,6 @@ sealed class DeliveryIntent : ViewIntent {
     object ClickCallCustomer : DeliveryIntent()
     object ClickChatCustomer : DeliveryIntent()
     object ClickMapNavigation : DeliveryIntent() // Mở Google Maps thật
+    object MarkAsDelivered : DeliveryIntent()
+
 }

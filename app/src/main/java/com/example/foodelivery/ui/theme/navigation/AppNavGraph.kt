@@ -4,12 +4,15 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import com.example.foodelivery.presentation.admin.category.add_edit.AddEditCategoryScreen
 import com.example.foodelivery.presentation.admin.category.list.AdminCategoryListScreen
 import com.example.foodelivery.presentation.admin.home.AdminDashboardScreen
 import com.example.foodelivery.presentation.auth.contract.LoginEffect
+import com.example.foodelivery.presentation.auth.forgot_password.ForgotPasswordScreen
 import com.example.foodelivery.presentation.auth.login.LoginScreen
 import com.example.foodelivery.presentation.auth.register.RegisterScreen
 import com.example.foodelivery.presentation.auth.register.contract.RegisterEffect
@@ -22,7 +25,7 @@ import com.example.foodelivery.presentation.customer.orderdetail.OrderDetailScre
 import com.example.foodelivery.presentation.customer.orderhistory.OrderHistoryScreen
 import com.example.foodelivery.presentation.customer.profile.CustomerProfileScreen
 import com.example.foodelivery.presentation.customer.profile.editprofile.CustomerEditProfileScreen
-import com.example.foodelivery.presentation.customer.tracking.CustomerTrackingScreen
+import com.example.foodelivery.presentation.customer.settings.CustomerSettingsScreen
 import com.example.foodelivery.presentation.driver.dashboard.DriverDashboardScreen
 import com.example.foodelivery.presentation.driver.delivery.DriverDeliveryScreen
 import com.example.foodelivery.presentation.driver.profile.DriverProfileScreen
@@ -51,6 +54,7 @@ fun AppNavGraph(
     }
 }
 
+// AUTH
 fun NavGraphBuilder.authGraph(navController: NavHostController) {
     navigation(startDestination = Route.Login.path, route = Route.Graph.AUTH) {
         composable(Route.Login.path) {
@@ -62,6 +66,7 @@ fun NavGraphBuilder.authGraph(navController: NavHostController) {
                         is LoginEffect.Navigation.ToAdminDashboard -> navController.navigate(Route.Graph.ADMIN) { popUpTo(Route.Graph.AUTH) { inclusive = true } }
                         is LoginEffect.Navigation.ToRestaurantDashboard -> navController.navigate(Route.Graph.RESTAURANT) { popUpTo(Route.Graph.AUTH) { inclusive = true } }
                         is LoginEffect.Navigation.ToRegister -> navController.navigate(Route.Register.path)
+                        is LoginEffect.Navigation.ToForgotPassword -> navController.navigate(Route.ForgotPassword.path)
                         else -> {}
                     }
                 }
@@ -76,9 +81,17 @@ fun NavGraphBuilder.authGraph(navController: NavHostController) {
                 }
             })
         }
+        composable(Route.ForgotPassword.path) {
+            ForgotPasswordScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
     }
 }
 
+// ADMIN
 fun NavGraphBuilder.adminGraph(navController: NavHostController) {
     navigation(startDestination = Route.AdminDashboard.path, route = Route.Graph.ADMIN) {
         composable(Route.AdminDashboard.path) { AdminDashboardScreen(navController = navController) }
@@ -93,6 +106,7 @@ fun NavGraphBuilder.adminGraph(navController: NavHostController) {
     }
 }
 
+// RESTAURANT
 fun NavGraphBuilder.restaurantGraph(navController: NavHostController) {
     navigation(startDestination = Route.RestaurantDashboard.path, route = Route.Graph.RESTAURANT) {
         composable(Route.RestaurantDashboard.path) { RestaurantDashboardScreen(navController = navController) }
@@ -104,6 +118,7 @@ fun NavGraphBuilder.restaurantGraph(navController: NavHostController) {
     }
 }
 
+// CUSTOMER
 fun NavGraphBuilder.customerGraph(navController: NavHostController) {
     navigation(startDestination = Route.CustomerHome.path, route = Route.Graph.CUSTOMER) {
         composable(Route.CustomerHome.path) { CustomerHomeScreen(navController = navController) }
@@ -121,22 +136,33 @@ fun NavGraphBuilder.customerGraph(navController: NavHostController) {
             CustomerFoodListScreen(navController = navController)
         }
         composable(Route.CustomerProfile.path) { CustomerProfileScreen(navController = navController) }
+
         composable(Route.CustomerEditProfile.path) { CustomerEditProfileScreen(navController = navController) }
-        composable(Route.Checkout.path) { CheckoutScreen(navController = navController) } 
-        composable(Route.CustomerOrderHistory.path) { OrderHistoryScreen(navController = navController) } 
+
+        composable(
+            route = Route.Checkout.routeWithArgs,
+            arguments = listOf(
+                navArgument(Route.Checkout.ARG_ADDRESS) { type = NavType.StringType }
+            )
+        ) {
+            CheckoutScreen(navController = navController)
+        }
+
+        composable(Route.CustomerOrderHistory.path) { OrderHistoryScreen(navController = navController) }
+
         composable(route = "order_detail/{orderId}") { backStackEntry ->
             val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
             OrderDetailScreen(navController = navController, orderId = orderId)
         }
-        composable(
-            route = Route.CustomerTracking.path,
-            arguments = Route.CustomerTracking.navArgs
-        ) {
-            CustomerTrackingScreen()
+
+        composable(Route.CustomerSettings.path) {
+            CustomerSettingsScreen(navController = navController)
+
         }
     }
 }
 
+// DRIVER
 fun NavGraphBuilder.driverGraph(navController: NavHostController) {
     navigation(startDestination = Route.DriverDashboard.path, route = Route.Graph.DRIVER) {
         composable(Route.DriverDashboard.path) { DriverDashboardScreen(navController = navController) }

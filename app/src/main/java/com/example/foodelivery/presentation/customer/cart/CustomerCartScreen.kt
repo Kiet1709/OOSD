@@ -48,7 +48,7 @@ fun CustomerCartScreen(
                     navController.navigate("customer_tracking/${effect.orderId}")
                 }
                 is CartEffect.NavigateToCheckout -> {
-                    navController.navigate(Route.Checkout.path) // Simplified navigation
+                    navController.navigate(Route.Checkout.createRoute(effect.address))
                 }
             }
         }

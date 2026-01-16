@@ -12,12 +12,11 @@ import com.example.foodelivery.ui.theme.FoodeliveryTheme
 import com.example.foodelivery.ui.theme.navigation.AppNavGraph
 import dagger.hilt.android.AndroidEntryPoint
 
-@AndroidEntryPoint // <--- QUAN TRỌNG: Thiếu cái này App sẽ Crash ngay lập tức vì dùng Hilt
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Senior: Có thể thêm logic kiểm tra Root/Jailbreak hoặc config Splash Screen ở đây
 
         setContent {
             FoodeliveryTheme {

@@ -1,5 +1,6 @@
 package com.example.foodelivery.presentation.customer.checkout
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.example.foodelivery.core.base.BaseViewModel
 import com.example.foodelivery.core.common.Resource
@@ -12,6 +13,7 @@ import com.example.foodelivery.presentation.customer.checkout.contract.CheckoutE
 import com.example.foodelivery.presentation.customer.checkout.contract.CheckoutIntent
 import com.example.foodelivery.presentation.customer.checkout.contract.CheckoutState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import com.example.foodelivery.ui.theme.navigation.Route
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -21,33 +23,54 @@ import javax.inject.Inject
 @HiltViewModel
 class CheckoutViewModel @Inject constructor(
     private val placeOrderUseCase: PlaceOrderUseCase,
-    getCartUseCase: GetCartUseCase, // Lấy dữ liệu từ đây
-    getUserInfoUseCase: GetUserInfoUseCase // Và từ đây
+    private val getCartUseCase: GetCartUseCase,
+    private val getUserInfoUseCase: GetUserInfoUseCase,
+    private val savedStateHandle: SavedStateHandle
 ) : BaseViewModel<CheckoutState, CheckoutIntent, CheckoutEffect>(CheckoutState()) {
 
     companion object {
         private const val DELIVERY_FEE = 15000.0
     }
 
-    // Tự lấy dữ liệu, không cần truyền qua navigation nữa
-    override val uiState = combine(
-        getCartUseCase(),
-        getUserInfoUseCase()
-    ) { cartItems, user ->
-        val uiItems = cartItems.map { it.toUiModel() }
-        val subTotal = uiItems.sumOf { it.itemTotal }
-        val deliveryFee = if (subTotal > 0) DELIVERY_FEE else 0.0
-        val finalTotal = subTotal + deliveryFee
+    init {
+        loadData()
+    }
 
-        CheckoutState(
-            items = uiItems,
-            address = user?.address ?: "",
-            subTotal = subTotal,
-            deliveryFee = deliveryFee,
-            finalTotal = finalTotal
-        )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CheckoutState(isLoading = true))
+    private fun loadData() {
+        val addressFromCart = savedStateHandle.get<String>(Route.Checkout.ARG_ADDRESS)
+        if (!addressFromCart.isNullOrBlank()) {
+            setState { copy(address = addressFromCart) }
+        } else {
+            viewModelScope.launch {
+                getUserInfoUseCase().collect { user ->
+                    val dbAddress = user?.address ?: ""
+                    setState {
+                        if (address.isBlank()) copy(address = dbAddress) else this
+                    }
+                }
+            }
+        }
 
+        viewModelScope.launch {
+            getCartUseCase().collect { cartItems ->
+                val uiItems = cartItems.map { it.toUiModel() }
+
+                val subTotal = uiItems.sumOf { it.itemTotal }
+                val deliveryFee = if (subTotal > 0) DELIVERY_FEE else 0.0
+                val finalTotal = subTotal + deliveryFee
+
+                setState {
+                    copy(
+                        items = uiItems,
+                        subTotal = subTotal,
+                        deliveryFee = deliveryFee,
+                        finalTotal = finalTotal,
+                        isLoading = false
+                    )
+                }
+            }
+        }
+    }
     fun setEvent(intent: CheckoutIntent) = handleIntent(intent)
 
     override fun handleIntent(intent: CheckoutIntent) {
@@ -62,6 +85,11 @@ class CheckoutViewModel @Inject constructor(
             val state = uiState.value
             if (state.items.isEmpty()) {
                 setEffect { CheckoutEffect.ShowToast("Giỏ hàng trống") }
+                setState { copy(isLoading = false) }
+                return@launch
+            }
+            if (state.address.isBlank()) {
+                setEffect { CheckoutEffect.ShowToast("Vui lòng nhập địa chỉ nhận hàng") }
                 setState { copy(isLoading = false) }
                 return@launch
             }

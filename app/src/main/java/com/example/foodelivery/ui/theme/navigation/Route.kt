@@ -41,7 +41,15 @@ sealed class Route(val path: String) {
     object CustomerAddress : Route("customer_address")
     object CustomerOrderHistory : Route("customer_order_history")
     object CustomerSettings : Route("customer_settings")
-    object Checkout : Route("checkout") // Add this
+    object Checkout : Route("checkout") {
+        const val ARG_ADDRESS = "delivery_address"
+        val routeWithArgs = "$path/{$ARG_ADDRESS}"
+
+        fun createRoute(address: String): String {
+            val encodedAddress = android.net.Uri.encode(address)
+            return "$path/$encodedAddress"
+        }
+    }
     object CustomerFoodDetail : Route("customer_food_detail/{foodId}"){
         const val ARG_FOOD_ID = "foodId"
         fun createRoute(foodId: String) = "customer_food_detail/$foodId"

@@ -4,7 +4,7 @@ import com.example.foodelivery.core.base.ViewSideEffect
 
 sealed class CartEffect : ViewSideEffect {
     object NavigateToHome : CartEffect()
-    object NavigateToCheckout : CartEffect() // No more parameters needed
+    data class NavigateToCheckout(val address: String) : CartEffect()
     data class NavigateToTracking(val orderId: String) : CartEffect()
     data class ShowToast(val msg: String) : CartEffect()
 }

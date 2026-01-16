@@ -37,7 +37,7 @@ fun DeliveryBottomSheet(
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
 
-            // 1. Header: Trạng thái hiện tại
+            // Header
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Navigation, contentDescription = null, tint = PrimaryColor)
                 Spacer(modifier = Modifier.width(8.dp))
@@ -50,19 +50,16 @@ fun DeliveryBottomSheet(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            Divider(color = Color(0xFFF0F0F0))
+            HorizontalDivider(color = Color(0xFFF0F0F0)) // Dùng HorizontalDivider cho Material3
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 2. Thông tin chính (Logic hiển thị tùy theo bước)
-            // Nếu đang đi lấy món -> Hiện tên Quán. Nếu đang đi giao -> Hiện tên Khách.
+            // Logic hiển thị Quán hay Khách
             val isPickupPhase = currentStep == DeliveryStep.HEADING_TO_RESTAURANT || currentStep == DeliveryStep.PICKING_UP
-
             val displayTitle = if (isPickupPhase) order.restaurantName else order.customerName
             val displayAddress = if (isPickupPhase) order.restaurantAddress else order.customerAddress
             val displayIcon = if (isPickupPhase) Icons.Default.Store else Icons.Default.Person
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Avatar / Icon
                 Surface(
                     shape = CircleShape,
                     color = Color(0xFFF5F5F5),
@@ -72,44 +69,23 @@ fun DeliveryBottomSheet(
                         Icon(displayIcon, contentDescription = null, tint = Color.Gray)
                     }
                 }
-
                 Spacer(modifier = Modifier.width(16.dp))
-
-                // Text Info
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = displayTitle,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
-                    )
-                    Text(
-                        text = displayAddress,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray,
-                        maxLines = 2
-                    )
+                    Text(text = displayTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text(text = displayAddress, style = MaterialTheme.typography.bodyMedium, color = Color.Gray, maxLines = 2)
                 }
-
-                // Action Buttons (Gọi / Map)
-                IconButton(
-                    onClick = onCall,
-                    modifier = Modifier.background(Color(0xFFE0F7FA), CircleShape)
-                ) {
+                IconButton(onClick = onCall, modifier = Modifier.background(Color(0xFFE0F7FA), CircleShape)) {
                     Icon(Icons.Default.Call, contentDescription = "Call", tint = PrimaryColor)
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                IconButton(
-                    onClick = onMapClick,
-                    modifier = Modifier.background(Color(0xFFE0F7FA), CircleShape)
-                ) {
+                IconButton(onClick = onMapClick, modifier = Modifier.background(Color(0xFFE0F7FA), CircleShape)) {
                     Icon(Icons.Default.Map, contentDescription = "Map", tint = PrimaryColor)
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 3. Hiển thị tiền thu hộ (COD) nếu có
+            // COD
             if (order.totalAmount > 0) {
                 val formattedPrice = NumberFormat.getCurrencyInstance(Locale("vi", "VN")).format(order.totalAmount)
                 Row(
@@ -126,20 +102,14 @@ fun DeliveryBottomSheet(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // 4. Nút Hành động chính (Nút to nhất)
+            // Button
             Button(
                 onClick = onMainAction,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp),
+                modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)
             ) {
-                Text(
-                    text = currentStep.buttonText,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Text(text = currentStep.buttonText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
