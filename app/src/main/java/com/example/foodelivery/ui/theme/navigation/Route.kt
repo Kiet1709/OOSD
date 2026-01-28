@@ -18,6 +18,12 @@ sealed class Route(val path: String) {
     object Register : Route("register")
     object ForgotPassword : Route("forgot_password")
 
+    object ResetPassword : Route("reset_password") {
+        fun createRoute(code: String): String {
+            return "$path?code=$code"
+        }
+    }
+
     // --- ADMIN ---
     object AdminDashboard : Route("admin_dashboard")
     object AdminCategoryList : Route("admin_category_list")
@@ -41,6 +47,7 @@ sealed class Route(val path: String) {
     object CustomerAddress : Route("customer_address")
     object CustomerOrderHistory : Route("customer_order_history")
     object CustomerSettings : Route("customer_settings")
+    object ChangePassword : Route("change_password")
     object Checkout : Route("checkout") {
         const val ARG_ADDRESS = "delivery_address"
         val routeWithArgs = "$path/{$ARG_ADDRESS}"

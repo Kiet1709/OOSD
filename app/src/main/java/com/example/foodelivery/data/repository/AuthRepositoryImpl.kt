@@ -1,11 +1,13 @@
 package com.example.foodelivery.data.repository
 
+import android.util.Log
 import com.example.foodelivery.core.common.Resource
 import com.example.foodelivery.data.local.FoodDatabase
 import com.example.foodelivery.data.mapper.*
 import com.example.foodelivery.data.remote.dto.UserDto
 import com.example.foodelivery.domain.model.User
 import com.example.foodelivery.domain.repository.IAuthRepository
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.first
@@ -66,12 +68,54 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun getCurrentUser(): User? = db.userDao().getUser().first()?.toDomain()
 
-    override suspend fun sendPasswordResetEmail(email: String): Resource<Boolean> {
+    override suspend fun sendPasswordResetEmail(email: String): Resource<Unit> {
         return try {
             auth.sendPasswordResetEmail(email).await()
-            Resource.Success(true)
+            Log.d("AuthRepo", "Đã gửi lệnh thành công lên Firebase") // <--- Xem Log này có hiện không
+            Resource.Success(Unit)
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Lỗi gửi email")
+            e.printStackTrace() // <--- Quan trọng: In toàn bộ lỗi ra Logcat
+            Log.e("AuthRepo", "Lỗi gửi mail: ${e.message}")
+
+            val msg = when {
+                e.message?.contains("user-not-found") == true -> "Email chưa đăng ký."
+                else -> e.message ?: "Lỗi gửi email."
+            }
+            Resource.Error(msg)
+        }
+    }
+
+    override suspend fun confirmPasswordReset(code: String, newPass: String): Resource<Unit> {
+        return try {
+            auth.confirmPasswordReset(code, newPass).await()
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            val msg = when {
+                e.message?.contains("weak-password") == true -> "Mật khẩu quá yếu (cần ít nhất 6 ký tự)."
+                e.message?.contains("oob-code-is-invalid") == true -> "Link không hợp lệ hoặc đã được sử dụng."
+                e.message?.contains("expired") == true -> "Link đã hết hạn. Vui lòng gửi yêu cầu mới."
+                else -> e.message ?: "Lỗi đổi mật khẩu."
+            }
+            Resource.Error(msg)
+        }
+    }
+
+    override suspend fun changePassword(currentPass: String, newPass: String): Resource<Unit> {
+        return try {
+            val user = auth.currentUser ?: throw Exception("Người dùng chưa đăng nhập")
+            val email = user.email ?: throw Exception("Không tìm thấy email")
+            val credential = EmailAuthProvider.getCredential(email, currentPass)
+            user.reauthenticate(credential).await()
+            user.updatePassword(newPass).await()
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            val msg = when {
+                e.message?.contains("password") == true -> "Mật khẩu hiện tại không đúng."
+                e.message?.contains("weak") == true -> "Mật khẩu mới phải có ít nhất 6 ký tự."
+                e.message?.contains("network") == true -> "Lỗi kết nối mạng."
+                else -> e.message ?: "Lỗi đổi mật khẩu."
+            }
+            Resource.Error(msg)
         }
     }
 }

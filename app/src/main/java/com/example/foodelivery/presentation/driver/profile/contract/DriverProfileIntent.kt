@@ -7,4 +7,5 @@ sealed class DriverProfileIntent : ViewIntent {
     object EditProfile : DriverProfileIntent()
     object ClickBack : DriverProfileIntent()
     object ClickLogout : DriverProfileIntent()
+    object ClickChangePassword : DriverProfileIntent()
 }

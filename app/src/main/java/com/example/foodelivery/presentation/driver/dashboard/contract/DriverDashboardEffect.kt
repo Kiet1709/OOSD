@@ -8,4 +8,5 @@ sealed class DriverDashboardEffect : ViewSideEffect {
     object NavigateToProfile : DriverDashboardEffect()
     object NavigateToRevenueReport : DriverDashboardEffect()
     object NavigateToLogin : DriverDashboardEffect()
+    object NavigateToChangePassword : DriverDashboardEffect()
 }

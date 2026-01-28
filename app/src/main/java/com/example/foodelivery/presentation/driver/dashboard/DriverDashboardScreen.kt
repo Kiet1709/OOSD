@@ -29,6 +29,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.foodelivery.presentation.driver.dashboard.components.AvailableOrderItemCard
 import com.example.foodelivery.presentation.driver.dashboard.components.DriverDashboardHeader
+import com.example.foodelivery.presentation.driver.dashboard.components.DriverHeader
 import com.example.foodelivery.presentation.driver.dashboard.contract.DriverDashboardEffect
 import com.example.foodelivery.presentation.driver.dashboard.contract.DriverDashboardIntent
 import com.example.foodelivery.ui.theme.navigation.Route
@@ -59,6 +60,9 @@ fun DriverDashboardScreen(
                 is DriverDashboardEffect.ShowToast -> {
                     Toast.makeText(context, effect.msg, Toast.LENGTH_SHORT).show()
                 }
+                is DriverDashboardEffect.NavigateToChangePassword -> {
+                    navController.navigate(Route.ChangePassword.path)
+                }
                 else -> {}
             }
         }
@@ -71,12 +75,14 @@ fun DriverDashboardScreen(
                 .padding(it)
                 .padding(16.dp)
         ) {
-            DriverDashboardHeader(
-                driver = state.user,
+            DriverHeader(
+                user = state.user,
                 isOnline = state.isOnline,
-                onStatusChange = { viewModel.setEvent(DriverDashboardIntent.ToggleOnlineStatus) },
+                onToggleStatus = { viewModel.setEvent(DriverDashboardIntent.ToggleOnlineStatus) }, // Sửa 'onStatusChange'
                 onProfileClick = { viewModel.setEvent(DriverDashboardIntent.ClickProfile) },
-                onLogoutClick = { viewModel.setEvent(DriverDashboardIntent.Logout) }
+                onChangePasswordClick = { viewModel.setEvent(DriverDashboardIntent.ClickChangePassword) },
+                onLogoutClick = { viewModel.setEvent(DriverDashboardIntent.Logout) },
+                onRevenueClick = { /* TODO: Xử lý sau */ }
             )
 
             Spacer(modifier = Modifier.height(24.dp))

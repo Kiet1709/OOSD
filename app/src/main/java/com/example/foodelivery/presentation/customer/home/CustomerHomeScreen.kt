@@ -51,6 +51,8 @@ fun CustomerHomeScreen(
                 CustomerHomeEffect.NavigateToCart -> navController.navigate(Route.CustomerCart.path)
                 CustomerHomeEffect.NavigateToProfile -> navController.navigate(Route.CustomerProfile.path)
                 CustomerHomeEffect.NavigateToSettings -> navController.navigate(Route.CustomerSettings.path)
+                CustomerHomeEffect.NavigateToChangePassword ->
+                    navController.navigate(Route.ChangePassword.path)
                 CustomerHomeEffect.NavigateToLogin -> navController.navigate(Route.Login.path) { popUpTo(0) { inclusive = true } }
                 CustomerHomeEffect.NavigateToOrderHistory -> navController.navigate(Route.CustomerOrderHistory.path) // Add this
                 is CustomerHomeEffect.NavigateToTracking -> navController.navigate(Route.CustomerTracking.createRoute(effect.orderId))
@@ -70,6 +72,7 @@ fun CustomerHomeScreen(
                 onProfileClick = { viewModel.setEvent(CustomerHomeIntent.ClickProfile) },
                 onOrderClick = { viewModel.setEvent(CustomerHomeIntent.ClickCurrentOrder) },
                 onSettingsClick = { viewModel.setEvent(CustomerHomeIntent.ClickSettings) },
+                onChangePasswordClick = { viewModel.setEvent(CustomerHomeIntent.ClickChangePassword) },
                 onLogoutClick = { viewModel.setEvent(CustomerHomeIntent.ClickLogout) }
             )
         }
@@ -84,6 +87,7 @@ fun CustomerHomeScreen(
                 categories = state.categories,
                 onClick = { viewModel.setEvent(CustomerHomeIntent.ClickCategory(it)) }
             )
+
             Spacer(modifier = Modifier.height(16.dp))
             
             if (state.isLoading) {

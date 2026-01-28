@@ -7,4 +7,5 @@ sealed class DriverProfileEffect : ViewSideEffect {
     object NavigateBack : DriverProfileEffect()
     object NavigateToLogin : DriverProfileEffect()
     data class ShowToast(val message: String) : DriverProfileEffect()
+    object NavigateToChangePassword : DriverProfileEffect()
 }

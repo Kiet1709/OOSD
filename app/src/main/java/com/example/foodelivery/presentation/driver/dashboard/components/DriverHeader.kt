@@ -30,6 +30,7 @@ fun DriverHeader(
     onToggleStatus: () -> Unit,
     onProfileClick: () -> Unit,
     onLogoutClick: () -> Unit,
+    onChangePasswordClick: () -> Unit,
     onRevenueClick: () -> Unit
 ) {
     var isMenuExpanded by remember { mutableStateOf(false) }
@@ -70,7 +71,16 @@ fun DriverHeader(
             }
             // MENU
             DropdownMenu(expanded = isMenuExpanded, onDismissRequest = { isMenuExpanded = false }, modifier = Modifier.background(Color.White)) {
-                DropdownMenuItem(text = { Text("Hồ sơ tài xế") }, onClick = { isMenuExpanded = false; onProfileClick() }, leadingIcon = { Icon(Icons.Default.Person, null) })
+                DropdownMenuItem(
+                    text = { Text("Hồ sơ tài xế") },
+                    onClick = { isMenuExpanded = false; onProfileClick() },
+                    leadingIcon = { Icon(Icons.Default.Person, null) }
+                )
+                DropdownMenuItem(
+                    text = { Text("Đổi mật khẩu") },
+                    onClick = { isMenuExpanded = false; onChangePasswordClick() },
+                    leadingIcon = { Icon(Icons.Default.Lock, null) }
+                )
                 DropdownMenuItem(text = { Text("Doanh thu") }, onClick = { isMenuExpanded = false; onRevenueClick() }, leadingIcon = { Icon(Icons.Default.AttachMoney, null) })
                 HorizontalDivider()
                 DropdownMenuItem(text = { Text("Đăng xuất", color = Color.Red) }, onClick = { isMenuExpanded = false; onLogoutClick() }, leadingIcon = { Icon(Icons.Default.ExitToApp, null, tint = Color.Red) })

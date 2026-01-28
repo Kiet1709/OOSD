@@ -16,6 +16,7 @@ import com.example.foodelivery.presentation.auth.forgot_password.ForgotPasswordS
 import com.example.foodelivery.presentation.auth.login.LoginScreen
 import com.example.foodelivery.presentation.auth.register.RegisterScreen
 import com.example.foodelivery.presentation.auth.register.contract.RegisterEffect
+import com.example.foodelivery.presentation.auth.reset_password.ResetPasswordScreen
 import com.example.foodelivery.presentation.customer.cart.CustomerCartScreen
 import com.example.foodelivery.presentation.customer.checkout.CheckoutScreen
 import com.example.foodelivery.presentation.customer.food.detail.FoodDetailScreen
@@ -29,6 +30,7 @@ import com.example.foodelivery.presentation.customer.settings.CustomerSettingsSc
 import com.example.foodelivery.presentation.driver.dashboard.DriverDashboardScreen
 import com.example.foodelivery.presentation.driver.delivery.DriverDeliveryScreen
 import com.example.foodelivery.presentation.driver.profile.DriverProfileScreen
+import com.example.foodelivery.presentation.driver.profile.change_password.ChangePasswordScreen
 import com.example.foodelivery.presentation.driver.profile.editprofile.DriverEditProfileScreen
 import com.example.foodelivery.presentation.restaurant.food.detail.RestaurantAddEditFoodScreen
 import com.example.foodelivery.presentation.restaurant.food.list.RestaurantFoodListScreen
@@ -87,6 +89,14 @@ fun NavGraphBuilder.authGraph(navController: NavHostController) {
                     navController.popBackStack()
                 }
             )
+        }
+        composable(
+            route = "${Route.ResetPassword.path}?code={code}",
+            arguments = listOf(
+                navArgument("code") { type = NavType.StringType }
+            )
+        ) {
+            ResetPasswordScreen(navController = navController)
         }
     }
 }
@@ -158,6 +168,9 @@ fun NavGraphBuilder.customerGraph(navController: NavHostController) {
         composable(Route.CustomerSettings.path) {
             CustomerSettingsScreen(navController = navController)
 
+        }
+        composable(Route.ChangePassword.path) {
+            ChangePasswordScreen(navController = navController)
         }
     }
 }

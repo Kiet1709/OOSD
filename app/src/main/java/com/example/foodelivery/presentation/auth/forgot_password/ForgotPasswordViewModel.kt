@@ -4,7 +4,7 @@ import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.foodelivery.core.common.Resource
-import com.example.foodelivery.domain.usecase.auth.ForgotPasswordUseCase
+import com.example.foodelivery.domain.repository.IAuthRepository
 import com.example.foodelivery.presentation.auth.forgot_password.contract.ForgotPasswordEffect
 import com.example.foodelivery.presentation.auth.forgot_password.contract.ForgotPasswordIntent
 import com.example.foodelivery.presentation.auth.forgot_password.contract.ForgotPasswordState
@@ -16,7 +16,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ForgotPasswordViewModel @Inject constructor(
-    private val forgotPasswordUseCase: ForgotPasswordUseCase
+    private val authRepo: IAuthRepository
 ) : ViewModel() {
 
     // 1. STATE
@@ -30,34 +30,20 @@ class ForgotPasswordViewModel @Inject constructor(
     // 3. PROCESS INTENT
     fun processIntent(intent: ForgotPasswordIntent) {
         when (intent) {
-            // --- STEP 1 ---
             is ForgotPasswordIntent.EmailChanged -> {
                 updateState { copy(email = intent.value, error = null) }
             }
-            ForgotPasswordIntent.ClickSendOtp -> sendOtp()
-
-            // --- STEP 2 ---
-            is ForgotPasswordIntent.OtpChanged -> {
-                updateState { copy(otpCode = intent.value, error = null) }
-            }
-            is ForgotPasswordIntent.NewPassChanged -> {
-                updateState { copy(newPass = intent.value, error = null) }
-            }
-            ForgotPasswordIntent.TogglePasswordVisibility -> {
-                updateState { copy(isPasswordVisible = !isPasswordVisible) }
-            }
-            ForgotPasswordIntent.ClickSubmitReset -> submitReset()
-
-            // --- NAVIGATION ---
+            ForgotPasswordIntent.ClickSendLink -> sendResetLink()
             ForgotPasswordIntent.ClickBackToLogin -> {
-                sendEffect(ForgotPasswordEffect.Navigation.ToLogin)
-            }        }
+                sendEffect(ForgotPasswordEffect.NavigateToLogin)
+            }
+        }
     }
 
-    // XỬ LÝ STEP 1: Gửi Email/OTP
-    private fun sendOtp() {
+    private fun sendResetLink() {
         val email = _state.value.email
 
+        // Validate Email
         if (email.isBlank() || !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
             updateState { copy(error = "Email không hợp lệ") }
             return
@@ -66,51 +52,23 @@ class ForgotPasswordViewModel @Inject constructor(
         viewModelScope.launch {
             updateState { copy(isLoading = true, error = null) }
 
-            // Gọi UseCase gửi Email (đã tạo ở bước trước)
-            val result = forgotPasswordUseCase(email)
+            // Gọi Repository gửi Link
+            val result = authRepo.sendPasswordResetEmail(email)
 
             updateState { copy(isLoading = false) }
 
             when (result) {
                 is Resource.Success -> {
-                    sendEffect(ForgotPasswordEffect.ShowToast("Mã xác thực đã được gửi!"))
-                    // Chuyển sang Step 2
-                    updateState { copy(step = 2, error = null) }
+                    sendEffect(ForgotPasswordEffect.ShowToast("Đã gửi link! Vui lòng kiểm tra Email."))
+                    sendEffect(ForgotPasswordEffect.NavigateToLogin)
                 }
                 is Resource.Error -> {
                     updateState { copy(error = result.message) }
                     sendEffect(ForgotPasswordEffect.ShowToast(result.message ?: "Lỗi gửi yêu cầu"))
                 }
-                is Resource.Loading -> {}
+                else -> {}
             }
         }
-    }
-
-    // XỬ LÝ STEP 2: Đổi mật khẩu
-    private fun submitReset() {
-        val s = _state.value
-
-        // Validate OTP
-        if (s.otpCode.length < 4) { // Giả sử OTP 4 hoặc 6 số
-            updateState { copy(error = "Mã OTP không hợp lệ") }
-            return
-        }
-
-        // Validate New Password
-        if (s.newPass.length < 6) {
-            updateState { copy(error = "Mật khẩu mới phải từ 6 ký tự trở lên") }
-            return
-        }
-
-        viewModelScope.launch {
-            updateState { copy(isLoading = true, error = null) }
-            kotlinx.coroutines.delay(1500) // Fake delay
-
-            updateState { copy(isLoading = false) }
-
-            // Giả sử thành công
-            sendEffect(ForgotPasswordEffect.ShowToast("Đổi mật khẩu thành công!"))
-            sendEffect(ForgotPasswordEffect.Navigation.ToLogin)        }
     }
 
     private fun updateState(reducer: ForgotPasswordState.() -> ForgotPasswordState) {

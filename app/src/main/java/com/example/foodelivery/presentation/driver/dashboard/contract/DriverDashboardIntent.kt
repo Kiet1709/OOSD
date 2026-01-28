@@ -10,5 +10,6 @@ sealed class DriverDashboardIntent : ViewIntent {
     data class RejectOrder(val orderId: String) : DriverDashboardIntent()
     object ClickRevenueDetail : DriverDashboardIntent()
     object ClickProfile : DriverDashboardIntent()
+    object ClickChangePassword : DriverDashboardIntent()
     object Logout : DriverDashboardIntent()
 }

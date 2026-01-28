@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.List // [1] Icon đơn hàng
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -29,8 +30,9 @@ fun HomeHeader(
     user: User?,
     modifier: Modifier = Modifier,
     onCartClick: () -> Unit,
-    onOrderClick: () -> Unit, // [2] Thêm callback click đơn hàng
+    onOrderClick: () -> Unit,
     onProfileClick: () -> Unit,
+    onChangePasswordClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onLogoutClick: () -> Unit
 ) {
@@ -94,6 +96,12 @@ fun HomeHeader(
                     onClick = { isMenuExpanded = false; onProfileClick() },
                     leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) }
                 )
+                DropdownMenuItem(
+                    text = { Text("Đổi mật khẩu") },
+                    onClick = { isMenuExpanded = false; onChangePasswordClick() },
+                    leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) }
+                )
+
                 DropdownMenuItem(
                     text = { Text("Cài đặt") },
                     onClick = { isMenuExpanded = false; onSettingsClick() },

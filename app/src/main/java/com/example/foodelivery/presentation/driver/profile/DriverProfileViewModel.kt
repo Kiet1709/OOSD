@@ -28,6 +28,10 @@ class DriverProfileViewModel @Inject constructor(
             DriverProfileIntent.LoadProfile -> loadProfile()
             DriverProfileIntent.EditProfile -> setEffect { DriverProfileEffect.NavigateToEditProfile }
             DriverProfileIntent.ClickBack -> setEffect { DriverProfileEffect.NavigateBack }
+
+            // 👇 Xử lý Đổi mật khẩu
+            DriverProfileIntent.ClickChangePassword -> setEffect { DriverProfileEffect.NavigateToChangePassword }
+
             DriverProfileIntent.ClickLogout -> {
                 viewModelScope.launch {
                     userRepository.logout()
@@ -41,11 +45,10 @@ class DriverProfileViewModel @Inject constructor(
         viewModelScope.launch {
             val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
             setState { copy(isLoading = true) }
-            val result = userRepository.getUser(uid)
-            if (result is Resource.Success) {
-                setState { copy(isLoading = false, user = result.data) }
-            } else {
-                setState { copy(isLoading = false) }
+            when (val result = userRepository.getUser(uid)) {
+                is Resource.Success -> setState { copy(isLoading = false, user = result.data) }
+                is Resource.Error -> setState { copy(isLoading = false) } // Có thể thêm xử lý lỗi nếu cần
+                else -> setState { copy(isLoading = false) }
             }
         }
     }

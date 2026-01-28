@@ -51,6 +51,7 @@ class CustomerHomeViewModel @Inject constructor(
             CustomerHomeIntent.ClickCart -> setEffect { CustomerHomeEffect.NavigateToCart }
             CustomerHomeIntent.ClickProfile -> setEffect { CustomerHomeEffect.NavigateToProfile }
             CustomerHomeIntent.ClickSettings -> setEffect { CustomerHomeEffect.NavigateToSettings }
+            CustomerHomeIntent.ClickChangePassword -> setEffect { CustomerHomeEffect.NavigateToChangePassword }
             CustomerHomeIntent.ClickLogout -> logout()
             CustomerHomeIntent.ClickCurrentOrder -> setEffect { CustomerHomeEffect.NavigateToOrderHistory } // Add this
             else -> {}

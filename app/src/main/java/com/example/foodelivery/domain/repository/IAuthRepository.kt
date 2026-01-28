@@ -8,5 +8,7 @@ interface IAuthRepository {
     suspend fun register(name: String, email: String, pass: String, phone: String, role: String): Resource<User> // Added role
     suspend fun logout()
     suspend fun getCurrentUser(): User?
-    suspend fun sendPasswordResetEmail(email: String): Resource<Boolean>
+    suspend fun sendPasswordResetEmail(email: String): Resource<Unit>
+    suspend fun confirmPasswordReset(code: String, newPass: String): Resource<Unit>
+    suspend fun changePassword(currentPass: String, newPass: String): Resource<Unit>
 }

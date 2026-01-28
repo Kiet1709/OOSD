@@ -15,4 +15,5 @@ sealed class CustomerHomeIntent : ViewIntent {
     object ClickSearch: CustomerHomeIntent()
     object ClickSettings: CustomerHomeIntent()
     object ClickLogout: CustomerHomeIntent()
+    object ClickChangePassword : CustomerHomeIntent()
 }

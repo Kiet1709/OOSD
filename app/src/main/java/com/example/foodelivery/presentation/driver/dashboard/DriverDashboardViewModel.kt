@@ -76,6 +76,7 @@ class DriverDashboardViewModel @Inject constructor(
             DriverDashboardIntent.ToggleOnlineStatus -> {
                 _isOnline.value = !_isOnline.value
             }
+            DriverDashboardIntent.ClickChangePassword -> setEffect { DriverDashboardEffect.NavigateToChangePassword }
             DriverDashboardIntent.Logout -> logout()
             DriverDashboardIntent.ClickProfile -> setEffect { DriverDashboardEffect.NavigateToProfile }
             else -> {}

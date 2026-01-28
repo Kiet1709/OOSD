@@ -7,7 +7,7 @@ import javax.inject.Inject
 class ForgotPasswordUseCase @Inject constructor(
     private val repository: IAuthRepository
 ) {
-    suspend operator fun invoke(email: String): Resource<Boolean> {
+    suspend operator fun invoke(email: String): Resource<Unit> {
         if (email.isBlank()) {
             return Resource.Error("Vui lòng nhập Email để đặt lại mật khẩu")
         }
